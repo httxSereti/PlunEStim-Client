@@ -1,0 +1,3 @@
+{
+  "extends": "@pes/typescript-config/base.json"
+}

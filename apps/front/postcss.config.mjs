@@ -1,0 +1,1 @@
+export { default } from "@pes/ui/postcss.config";
