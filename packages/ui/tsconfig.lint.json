@@ -1,7 +1,16 @@
 {
   "extends": "@pes/typescript-config/react-library.json",
   "compilerOptions": {
-    "outDir": "dist"
+    "outDir": "dist",
+    "baseUrl": ".",
+    "paths": {
+      "@/*": [
+        "./src/*"
+      ],
+      "@pes/ui/*": [
+        "./src/*"
+      ]
+    }
   },
   "include": [
     "src",

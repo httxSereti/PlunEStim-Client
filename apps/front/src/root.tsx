@@ -6,6 +6,10 @@ import {
     ScrollRestoration,
 } from "react-router";
 
+import { SidebarProvider, SidebarTrigger } from "@pes/ui/components/sidebar"
+import { AppSidebar } from "@/components/ui/layouts/app-sidebar"
+import { ThemeProvider } from "@/components/ui/theme/theme-provider";
+
 export function Layout({
     children,
 }: {
@@ -22,12 +26,16 @@ export function Layout({
                 <Meta />
                 <Links />
             </head>
-            <body style={ {
-                backgroundColor: "#372844"
-            }}>
-                {children}
-                <ScrollRestoration />
-                <Scripts />
+            <body>
+                <ThemeProvider defaultTheme="dark" storageKey="vite-ui-theme">
+                    <SidebarProvider>
+                        <AppSidebar />
+                        <SidebarTrigger />
+                        {children}
+                        <ScrollRestoration />
+                        <Scripts />
+                    </SidebarProvider>
+                </ThemeProvider>
             </body>
         </html>
     );
