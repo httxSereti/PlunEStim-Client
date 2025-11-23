@@ -1,17 +1,31 @@
 import { useEffect, useState } from "react";
 
+interface WebsocketMessage {
+  type: string;
+  payload: unknown;
+}
+
+interface WSSensorNotification {
+  type: string;
+  payload: string[];
+}
+
+
 export default function WebSocketLoggerComponent() {
-  const [sensors, setSensors] = useState({});
+  const [sensorNotifications, setSensorNotifications] = useState<string[]>([]);
 
   useEffect(() => {
     const ws = new WebSocket("ws://localhost:8000/ws");
 
     ws.onmessage = (event) => {
-      const msg = JSON.parse(event.data);
-      console.log(msg)
+      const message: WebsocketMessage = JSON.parse(event.data);
 
-      if (msg.type === "command") {
-        setSensors(msg.data);
+      console.log(message)
+
+      if (message.type === "sensor-notification") {
+        const { payload } = message as WSSensorNotification;
+
+        setSensorNotifications((prev) => [...prev, ...payload])
       }
     };
 
@@ -20,8 +34,10 @@ export default function WebSocketLoggerComponent() {
 
   return (
     <div style={{ padding: 20 }}>
-      <h1>Real-time Sensor Data</h1>
-      <pre>{JSON.stringify(sensors, null, 2)}</pre>
+      <h1>Real-time Sensor Notifications</h1>
+      <pre>{sensorNotifications.map((msg, index) => (
+        <li key={index}>{msg}</li>
+      ))}</pre>
     </div>
   );
 }

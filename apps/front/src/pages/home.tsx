@@ -7,7 +7,7 @@ import { Button } from "@pes/ui/components/button";
 // eslint-disable-next-line no-empty-pattern
 export function meta({ }: Route.MetaArgs) {
   return [
-    { title: "Hi" },
+    { title: "PES" },
     { name: "description", content: "Welcome to React Router!" },
   ];
 }
