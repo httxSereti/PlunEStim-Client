@@ -6,8 +6,8 @@ import {
     ScrollRestoration,
 } from "react-router";
 
-import { SidebarInset, SidebarProvider, SidebarTrigger } from "@pes/ui/components/sidebar"
-import { AppSidebar } from "@/components/ui/layouts/app-sidebar"
+import { SidebarInset, SidebarProvider } from "@pes/ui/components/sidebar"
+import { AppSidebar } from "@/components/ui/layouts/sidebar/app-sidebar"
 import { ThemeProvider } from "@/components/ui/theme/theme-provider";
 import { AppHeader } from "@/components/ui/layouts/app-header";
 
