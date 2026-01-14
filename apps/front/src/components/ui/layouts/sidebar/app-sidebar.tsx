@@ -5,13 +5,17 @@ import {
   Command,
   Frame,
   GalleryVerticalEnd,
+  Home,
   Map,
   PieChart,
   Settings2,
+  Sparkles,
   SquareTerminal,
 } from "lucide-react"
 
+
 import { NavMain } from "@/components/ui/layouts/sidebar/nav-main"
+import { NavPlayground } from "@/components/ui/layouts/sidebar/nav-playground"
 import { NavProjects } from "@/components/ui/layouts/sidebar/nav-projects"
 import { NavUser } from "@/components/ui/layouts/sidebar/nav-user"
 import { TeamSwitcher } from "@/components/ui/layouts/sidebar/team-switcher"
@@ -32,7 +36,7 @@ const data = {
   },
   teams: [
     {
-      name: "Acme Inc",
+      name: "Sereti Technologies",
       logo: GalleryVerticalEnd,
       plan: "Enterprise",
     },
@@ -49,6 +53,18 @@ const data = {
   ],
   navMain: [
     {
+      title: "Home",
+      url: "/",
+      icon: Home,
+    },
+    {
+      title: "Ask AI",
+      url: "#",
+      icon: Sparkles,
+    },
+  ],
+  navPlayground: [
+    {
       title: "Playground",
       url: "/",
       icon: SquareTerminal,
@@ -56,16 +72,16 @@ const data = {
       items: [
         {
           title: "History",
-          url: "/test",
+          url: "/app/test",
           icon: Map,
         },
         {
           title: "Sensors",
-          url: "/sensor",
+          url: "/app/sensor",
         },
         {
           title: "Settings",
-          url: "#",
+          url: "/random",
         },
       ],
     },
@@ -143,6 +159,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       </SidebarHeader>
       <SidebarContent>
         <NavMain items={data.navMain} />
+        <NavPlayground items={data.navPlayground} />
         <NavProjects projects={data.projects} />
       </SidebarContent>
       <SidebarFooter>
