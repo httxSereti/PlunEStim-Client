@@ -6,7 +6,27 @@ import {
     ScrollRestoration,
 } from "react-router";
 
+import { useEffect } from "react";
+
 import { ThemeProvider } from "@/components/ui/theme/theme-provider";
+
+import { Provider } from 'react-redux';
+import { store } from '@/store/store';
+import { verifyToken } from '@/store/slices/authSlice';
+import { useAppDispatch } from "@/store/hooks";
+
+function AppInitializer({ children }: { children: React.ReactNode }) {
+    const dispatch = useAppDispatch();
+
+    useEffect(() => {
+        // Verify token on app load
+        if (typeof window !== 'undefined') {
+            void dispatch(verifyToken());
+        }
+    }, [dispatch]);
+
+    return <>{children}</>;
+}
 
 export function Layout({
     children,
@@ -26,7 +46,11 @@ export function Layout({
             </head>
             <body>
                 <ThemeProvider defaultTheme="dark" storageKey="vite-ui-theme">
-                    {children}
+                    <Provider store={store}>
+                        <AppInitializer>
+                            {children}
+                        </AppInitializer>
+                    </Provider>
                     <ScrollRestoration />
                     <Scripts />
                 </ThemeProvider>

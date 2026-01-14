@@ -12,5 +12,8 @@ export default [
         route("sensor", "pages/sensor.tsx"),
     ]),
 
+    route("auth", "pages/auth/sign.tsx"),
+
+
     route("*?", "catchall.tsx"),
 ] satisfies RouteConfig;
