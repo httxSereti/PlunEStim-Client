@@ -1,5 +1,6 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router';
+import { useEffect, useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router';
+
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { login, guestLogin } from '@/store/slices/authSlice';
 import { Button } from '@pes/ui/components/button';
@@ -8,18 +9,37 @@ import { Label } from '@pes/ui/components/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@pes/ui/components/card';
 import { Alert, AlertDescription } from '@pes/ui/components/alert';
 
+
 export default function Login() {
-    const [email, setEmail] = useState('');
-    const [password, setPassword] = useState('');
+    const [searchParams] = useSearchParams();
+    const [magic_token, setMagicToken] = useState('');
     const dispatch = useAppDispatch();
     const navigate = useNavigate();
     const { loading, error } = useAppSelector((state) => state.auth);
 
+    const magicToken = searchParams.get('magic_token');
+
+    useEffect(() => {
+        async function signUser() {
+            if (magicToken) {
+                try {
+                    await dispatch(login({ magic_token: magicToken })).unwrap()
+                    navigate('/app');
+                    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+                } catch (err) {
+                    // Error is handled by Redux state
+                }
+            }
+        }
+
+        signUser()
+    }, [magicToken, dispatch, navigate]);
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
-            await dispatch(login({ email, password })).unwrap();
-            navigate('/dashboard');
+            await dispatch(login({ magic_token })).unwrap();
+            navigate('/app');
             // eslint-disable-next-line @typescript-eslint/no-unused-vars
         } catch (err) {
             // Error is handled by Redux state
@@ -51,25 +71,13 @@ export default function Login() {
                             </Alert>
                         )}
 
-                        <div className="space-y-2">
-                            <Label htmlFor="email">Email</Label>
+                        <div className="space-y-2 mb-5">
+                            <Label htmlFor="email">Magic Token</Label>
                             <Input
-                                id="email"
-                                type="email"
-                                placeholder="user@example.com"
-                                value={email}
-                                onChange={(e) => setEmail(e.target.value)}
-                                required
-                            />
-                        </div>
-
-                        <div className="space-y-2">
-                            <Label htmlFor="password">Password</Label>
-                            <Input
-                                id="password"
-                                type="password"
-                                value={password}
-                                onChange={(e) => setPassword(e.target.value)}
+                                id="magic_token"
+                                type="text"
+                                value={magic_token}
+                                onChange={(e) => setMagicToken(e.target.value)}
                                 required
                             />
                         </div>
