@@ -1,8 +1,10 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 
 interface User {
-    email: string;
-    name: string;
+    id: string;
+    role: string;
+    permissions: Array<string>
+    display_name: string;
     is_guest?: boolean;
 }
 
@@ -37,12 +39,12 @@ const API_URL = 'http://localhost:8000';
 // Async thunks
 export const login = createAsyncThunk<
     { access_token: string; token_type: string; user: User },
-    { email: string; password: string }
+    { magic_token: string }
 >(
     'auth/login',
     async (credentials, { rejectWithValue }) => {
         try {
-            const response = await fetch(`${API_URL}/auth/login`, {
+            const response = await fetch(`${API_URL}/auth/login?magic_token=${encodeURIComponent(credentials.magic_token)}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(credentials),
@@ -57,7 +59,24 @@ export const login = createAsyncThunk<
             if (typeof window !== 'undefined') {
                 localStorage.setItem('token', data.access_token);
             }
-            return data;
+
+            // Fetch user data with the new token
+            const userResponse = await fetch(`${API_URL}/auth/me`, {
+                headers: { 'Authorization': `Bearer ${data.access_token}` },
+            });
+
+            if (!userResponse.ok) {
+                return rejectWithValue('Failed to fetch user data');
+            }
+
+            const user = await userResponse.json();
+
+            return {
+                access_token: data.access_token,
+                token_type: data.token_type,
+                user: user,
+            };
+
             // eslint-disable-next-line @typescript-eslint/no-unused-vars
         } catch (error) {
             return rejectWithValue('Network error');
