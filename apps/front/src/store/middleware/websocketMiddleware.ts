@@ -4,7 +4,6 @@ import type { RootState, AppDispatch } from '@/store';
 import type { WebSocketConfig, WebSocketMessage, WebSocketIncomingMessage } from '@/types';
 import { setStatus, setError, incrementReconnect, resetReconnect } from '../slices/websocketSlice';
 import { logout } from '@/store/slices/authSlice';
-// import { addMessage } from '@/store/slices/messagesSlice';
 
 export function createWebSocketMiddleware(config: WebSocketConfig): Middleware {
     const {
@@ -63,15 +62,16 @@ export function createWebSocketMiddleware(config: WebSocketConfig): Middleware {
 
         // token inside url
         const wsUrl = `${url}?token=${encodeURIComponent(token)}`;
-
         ws = new WebSocket(wsUrl);
 
+        // is connected
         ws.onopen = () => {
             dispatch(setStatus('connected'));
             dispatch(resetReconnect());
             startHeartbeat();
         };
 
+        // disconnect use
         ws.onclose = (event) => {
             dispatch(setStatus('disconnected'));
             stopHeartbeat();
@@ -83,7 +83,7 @@ export function createWebSocketMiddleware(config: WebSocketConfig): Middleware {
                 return;
             }
 
-            // Reconnexion automatique
+            // Auto reconnect
             const state = getState();
             if (reconnect && state.websocket.reconnectAttempts < reconnectAttempts) {
                 dispatch(incrementReconnect());
@@ -105,8 +105,9 @@ export function createWebSocketMiddleware(config: WebSocketConfig): Middleware {
         ws.onmessage = (event) => {
             try {
                 const message: WebSocketIncomingMessage = JSON.parse(event.data);
+                console.log('WS MESSAGE RECEIVED:', message);
 
-                // Répondre au heartbeat
+                // Answer to heartbeat
                 if (message.type === 'pong') {
                     if (heartbeatTimeoutId) {
                         clearTimeout(heartbeatTimeoutId);
@@ -115,12 +116,22 @@ export function createWebSocketMiddleware(config: WebSocketConfig): Middleware {
                     return;
                 }
 
-                // Gérer les erreurs d'auth
+                // Catch Auth errors
                 if (message.type === 'auth:error' || message.type === 'error:unauthorized') {
                     dispatch(setError('Authentication error'));
                     dispatch(logout());
                     ws?.close(4001, 'Unauthorized');
                     return;
+                }
+
+                // Catch command responses
+                if (message.id) {
+                    // console.log('🎯 Dispatching command-response event for ID:', message.id);
+                    const commandEvent = new CustomEvent('websocket:command-response', {
+                        detail: { id: message.id, payload: message.payload },
+                    });
+                    window.dispatchEvent(commandEvent);
+                    // console.log('✅ Event dispatched');
                 }
 
                 // dispatch to listener of events
@@ -129,7 +140,7 @@ export function createWebSocketMiddleware(config: WebSocketConfig): Middleware {
                 });
                 window.dispatchEvent(customEvent);
 
-                // Router les messages
+                // dispatch messages to redux stores
                 switch (message.type) {
                     case 'notification':
                     case 'chat:message':
@@ -138,11 +149,9 @@ export function createWebSocketMiddleware(config: WebSocketConfig): Middleware {
 
                     case 'user:connected':
                     case 'user:disconnected':
-                        // Gérer dans d'autres slices si nécessaire
                         break;
 
                     //   default:
-                    //     // Messages génériques
                     //     if (message.type.includes('message') || message.type.includes('notification')) {
                     //       dispatch(addMessage({ type: message.type, data: message.payload }));
                     //     }
@@ -165,10 +174,8 @@ export function createWebSocketMiddleware(config: WebSocketConfig): Middleware {
 
     return (store) => (next) => (action) => {
         const { dispatch, getState } = store;
-
         const websocketMessage = action as WebSocketMessage;
 
-        // Actions personnalisées
         switch (websocketMessage.type) {
             case 'websocket/connect':
                 connect(dispatch, getState);
@@ -195,9 +202,7 @@ export function createWebSocketMiddleware(config: WebSocketConfig): Middleware {
                 break;
 
             case 'auth/setToken':
-                // Reconnecter avec le nouveau token
                 disconnect();
-                // Attendre que la déconnexion soit complète
                 setTimeout(() => {
                     const state = getState();
                     if (state.auth.isAuthenticated) {

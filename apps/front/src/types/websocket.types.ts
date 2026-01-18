@@ -14,6 +14,7 @@ export interface WebSocketError {
 }
 
 export interface ChatMessage {
+    id?: string;
     type: 'chat:message';
     payload: {
         text: string;
@@ -23,6 +24,7 @@ export interface ChatMessage {
 }
 
 export interface UserConnected {
+    id?: string;
     type: 'user:connected';
     payload: {
         id: number;
@@ -32,6 +34,7 @@ export interface UserConnected {
 }
 
 export interface UserDisconnected {
+    id?: string;
     type: 'user:disconnected';
     payload: {
         id: number;
@@ -39,6 +42,7 @@ export interface UserDisconnected {
 }
 
 export interface NotificationMessage {
+    id?: string;
     type: 'notification';
     payload: {
         title: string;
@@ -48,6 +52,7 @@ export interface NotificationMessage {
 }
 
 export interface AuthErrorMessage {
+    id?: string;
     type: 'auth:error' | 'error:unauthorized';
     payload: {
         message: string;
@@ -56,11 +61,13 @@ export interface AuthErrorMessage {
 }
 
 export interface PingMessage {
+    id?: string;
     type: 'ping';
     payload?: never;
 }
 
 export interface PongMessage {
+    id?: string;
     type: 'pong';
     payload?: never;
 }

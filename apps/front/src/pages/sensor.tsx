@@ -1,6 +1,5 @@
 import { useWebSocket } from "@/hooks/useWebSocket";
 import type { Route } from "../pages/+types/home";
-import type { ChatMessage } from "@/types";
 
 
 // eslint-disable-next-line no-empty-pattern
@@ -13,15 +12,30 @@ export function meta({ }: Route.MetaArgs) {
 
 export default function Sensor() {
 
-    const { status, isConnected, send, reconnect } = useWebSocket();
+    const { status, isConnected, sendCommand } = useWebSocket();
 
-    const updateSensor = () => {
+    const updateSensor = async () => {
 
-        send<ChatMessage['payload']>('chat:message', {
-            text: "dddd",
-            userId: '123',
-            username: 'Me',
-        });
+        // send<ChatMessage['payload']>('chat:message', {
+        //     text: "dddd",
+        //     userId: '123',
+        //     username: 'Me',
+        // });
+
+        try {
+            console.log("pdpdddpddpdp")
+            const data = await sendCommand('get:notifications', { limit: 10 });
+            console.log(data)
+            // setNotifications(data as unknown[]);
+        } catch (error) {
+            console.error('Failed to load notifications:', error);
+        }
+
+        // send<ChatMessage['payload']>('chat:message', {
+        //     text: "dddd",
+        //     userId: '123',
+        //     username: 'Me',
+        // });
 
     }
     return (

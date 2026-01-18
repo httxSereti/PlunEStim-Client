@@ -14,7 +14,7 @@ import { Provider } from 'react-redux';
 import { store } from '@/store';
 import { verifyToken } from '@/store/slices/authSlice';
 import { useAppDispatch } from "@/store/hooks";
-import { WebSocketProvider } from "./providers/WebsocketProvider";
+import { WebSocketProvider } from "@/providers/WebSocketProvider";
 
 function AppInitializer({ children }: { children: React.ReactNode }) {
     const dispatch = useAppDispatch();
