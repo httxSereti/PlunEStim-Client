@@ -1,5 +1,7 @@
+import { useWebSocket } from "@/hooks/useWebSocket";
 import type { Route } from "../pages/+types/home";
-import usePluneWebSocket from "@/hooks/usePluneWebSocket";
+import type { ChatMessage } from "@/types";
+
 
 // eslint-disable-next-line no-empty-pattern
 export function meta({ }: Route.MetaArgs) {
@@ -10,12 +12,22 @@ export function meta({ }: Route.MetaArgs) {
 }
 
 export default function Sensor() {
-    const { readyState, events } = usePluneWebSocket();
 
+    const { status, isConnected, send, reconnect } = useWebSocket();
+
+    const updateSensor = () => {
+
+        send<ChatMessage['payload']>('chat:message', {
+            text: "dddd",
+            userId: '123',
+            username: 'Me',
+        });
+
+    }
     return (
         <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
-            {readyState === 1 ? "Connected" : "Disconnected"}
-            {JSON.stringify(events)}
+            WebSocket: {status} {isConnected ? '🟢' : '🔴'}
+            <button onClick={updateSensor}>click</button>
             <div className="grid auto-rows-min gap-4 md:grid-cols-3">
                 <div className="bg-muted/50 aspect-video rounded-xl" />
                 <div className="bg-muted/50 aspect-video rounded-xl" />

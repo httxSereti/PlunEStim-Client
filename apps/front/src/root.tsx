@@ -11,9 +11,10 @@ import { useEffect } from "react";
 import { ThemeProvider } from "@/components/ui/theme/theme-provider";
 
 import { Provider } from 'react-redux';
-import { store } from '@/store/store';
+import { store } from '@/store';
 import { verifyToken } from '@/store/slices/authSlice';
 import { useAppDispatch } from "@/store/hooks";
+import { WebSocketProvider } from "./providers/WebsocketProvider";
 
 function AppInitializer({ children }: { children: React.ReactNode }) {
     const dispatch = useAppDispatch();
@@ -48,7 +49,9 @@ export function Layout({
                 <ThemeProvider defaultTheme="dark" storageKey="vite-ui-theme">
                     <Provider store={store}>
                         <AppInitializer>
-                            {children}
+                            <WebSocketProvider>
+                                {children}
+                            </WebSocketProvider>
                         </AppInitializer>
                     </Provider>
                     <ScrollRestoration />

@@ -1,0 +1,92 @@
+export type WebSocketStatus = 'connecting' | 'connected' | 'disconnected' | 'error';
+
+export interface WebSocketMessage<T = unknown> {
+    type: string;
+    payload?: T;
+    id?: string;
+    timestamp?: number;
+}
+
+export interface WebSocketError {
+    code: number;
+    reason: string;
+    timestamp: number;
+}
+
+export interface ChatMessage {
+    type: 'chat:message';
+    payload: {
+        text: string;
+        userId: string;
+        username: string;
+    };
+}
+
+export interface UserConnected {
+    type: 'user:connected';
+    payload: {
+        id: number;
+        name: string;
+        online: boolean;
+    };
+}
+
+export interface UserDisconnected {
+    type: 'user:disconnected';
+    payload: {
+        id: number;
+    };
+}
+
+export interface NotificationMessage {
+    type: 'notification';
+    payload: {
+        title: string;
+        message: string;
+        severity: 'info' | 'warning' | 'error' | 'success';
+    };
+}
+
+export interface AuthErrorMessage {
+    type: 'auth:error' | 'error:unauthorized';
+    payload: {
+        message: string;
+        code: number;
+    };
+}
+
+export interface PingMessage {
+    type: 'ping';
+    payload?: never;
+}
+
+export interface PongMessage {
+    type: 'pong';
+    payload?: never;
+}
+
+export type WebSocketIncomingMessage =
+    | ChatMessage
+    | UserConnected
+    | UserDisconnected
+    | NotificationMessage
+    | AuthErrorMessage
+    | PingMessage
+    | PongMessage;
+
+export interface WebSocketConfig {
+    url: string;
+    reconnect?: boolean;
+    reconnectAttempts?: number;
+    reconnectInterval?: number;
+    heartbeatInterval?: number;
+    heartbeatTimeout?: number;
+    getToken?: () => string | null;
+}
+
+export interface WebSocketState {
+    status: WebSocketStatus;
+    error: string | null;
+    reconnectAttempts: number;
+    lastConnected: number | null;
+}

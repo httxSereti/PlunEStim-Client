@@ -1,0 +1,34 @@
+// WebSocket types
+export type {
+    WebSocketStatus,
+    WebSocketMessage,
+    WebSocketError,
+    WebSocketIncomingMessage,
+    WebSocketConfig,
+    WebSocketState,
+    // Message types
+    ChatMessage,
+    UserConnected,
+    UserDisconnected,
+    NotificationMessage,
+    AuthErrorMessage,
+    PingMessage,
+    PongMessage
+} from './websocket.types';
+
+// Auth types
+export type {
+    User,
+    AuthTokens,
+    LoginCredentials,
+    LoginResponse,
+    AuthState,
+} from './auth.types';
+
+export { UserRole } from './auth.types';
+
+// API types
+export type {
+    ApiResponse,
+    ApiError,
+} from './api.types';
