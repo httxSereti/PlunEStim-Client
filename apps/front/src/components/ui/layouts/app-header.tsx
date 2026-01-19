@@ -3,9 +3,17 @@ import { useSidebar } from "@pes/ui/components/sidebar";
 import { SidebarIcon } from "lucide-react";
 import { Separator } from "@pes/ui/components/separator";
 import { ModeToggle } from "../theme/mode-toggle";
+import { useWebSocket } from "@/hooks/useWebSocket";
 
 export function AppHeader() {
     const { toggleSidebar } = useSidebar()
+    const { status } = useWebSocket()
+
+    const dotColor =
+        status === "connected"
+            ? "bg-green-500"
+            : "bg-red-500";
+
 
     return (
         <header className="bg-background sticky top-0 z-50 flex w-full items-center border-b">
@@ -19,20 +27,11 @@ export function AppHeader() {
                     <SidebarIcon />
                 </Button>
                 <Separator orientation="vertical" className="mr-2 h-4" />
-                {/* <Breadcrumb className="hidden sm:block">
-                    <BreadcrumbList>
-                        <BreadcrumbItem>
-                            <BreadcrumbLink href="#">
-                                Building Your Application
-                            </BreadcrumbLink>
-                        </BreadcrumbItem>
-                        <BreadcrumbSeparator />
-                        <BreadcrumbItem>
-                            <BreadcrumbPage>Data Fetching</BreadcrumbPage>
-                        </BreadcrumbItem>
-                    </BreadcrumbList>
-                </Breadcrumb> */}
-                <div className="w-full sm:ml-auto sm:w-auto">
+                <div className="flex items-center space-x-2">
+                    <div className="ml-1">WebSocket</div>
+                    <span className={`h-3 w-3 rounded-full ${dotColor}`} />
+                </div>
+                <div className="ml-auto flex items-center gap-2">
                     <div className="relative">
                         <ModeToggle />
                     </div>
