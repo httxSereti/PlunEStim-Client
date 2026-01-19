@@ -1,3 +1,5 @@
+import type { Sensor } from "./sensor.types";
+
 export type WebSocketStatus = 'connecting' | 'connected' | 'disconnected' | 'error';
 
 export interface WebSocketMessage<T = unknown> {
@@ -78,6 +80,15 @@ export interface SensorsInitialMessage {
     payload?: never;
 }
 
+export interface SensorsUpdateMessage {
+    id?: string;
+    type: 'sensors:update';
+    payload: {
+        id: string;
+        changes: Partial<Sensor>;
+    };
+}
+
 export type WebSocketIncomingMessage =
     | ChatMessage
     | UserConnected
@@ -86,7 +97,8 @@ export type WebSocketIncomingMessage =
     | AuthErrorMessage
     | PingMessage
     | PongMessage
-    | SensorsInitialMessage;
+    | SensorsInitialMessage
+    | SensorsUpdateMessage;
 
 export interface WebSocketConfig {
     url: string;

@@ -4,7 +4,8 @@ import type { RootState, AppDispatch } from '@/store';
 import type { WebSocketConfig, WebSocketMessage, WebSocketIncomingMessage, Sensor } from '@/types';
 import { setStatus, setError, incrementReconnect, resetReconnect } from '../slices/websocketSlice';
 import { logout } from '@/store/slices/authSlice';
-import { sensorsInitialized } from '../slices/sensorsSlice';
+import { sensorsInitialized, sensorUpdated } from '../slices/sensorsSlice';
+import type { SensorsUpdateMessage } from '@/types/websocket.types';
 
 export function createWebSocketMiddleware(config: WebSocketConfig): Middleware {
     const {
@@ -150,6 +151,13 @@ export function createWebSocketMiddleware(config: WebSocketConfig): Middleware {
                             dispatch(sensorsInitialized(sensors))
                             break;
                         }
+                    case 'sensors:update':
+                        dispatch(sensorUpdated({
+                            id: message.payload.id,
+                            changes: message.payload.changes
+                        }))
+                        break;
+
                     case 'notification':
                     case 'chat:message':
                         // dispatch(addMessage({ type: message.type, data: message.payload }));
