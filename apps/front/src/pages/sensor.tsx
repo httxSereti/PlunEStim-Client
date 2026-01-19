@@ -16,15 +16,18 @@ export default function Sensor() {
 
     const updateSensor = async () => {
 
-        // send<ChatMessage['payload']>('chat:message', {
-        //     text: "dddd",
-        //     userId: '123',
-        //     username: 'Me',
-        // });
-
         try {
-            console.log("pdpdddpddpdp")
-            const data = await sendCommand('get:notifications', { limit: 10 });
+            const data = await sendCommand('sensors:update', {
+                motion1: {
+                    alarm_enable: true,
+                    position_alarm_number_action: 5
+                },
+                motion2: {
+                    alarm_enable: true,
+                    position_alarm_number_action: 5,
+                    move_delay_off: 42
+                },
+            });
             console.log(data)
             // setNotifications(data as unknown[]);
         } catch (error) {

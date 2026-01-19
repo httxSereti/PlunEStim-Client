@@ -32,3 +32,11 @@ export type {
     ApiResponse,
     ApiError,
 } from './api.types';
+
+export type {
+    BaseSensor,
+    Sensor,
+    MotionSensor,
+    SoundSensor,
+    SensorsState,
+} from './sensor.types';

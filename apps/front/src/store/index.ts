@@ -1,6 +1,7 @@
 import { configureStore } from '@reduxjs/toolkit';
 import authReducer from '@/store/slices/authSlice';
 import websocketReducer from '@/store/slices/websocketSlice';
+import sensorsReducer from '@/store/slices/sensorsSlice';
 import { createWebSocketMiddleware } from '@/store/middleware/websocketMiddleware';
 
 const wsMiddleware = createWebSocketMiddleware({
@@ -20,6 +21,7 @@ export const store = configureStore({
     reducer: {
         auth: authReducer,
         websocket: websocketReducer,
+        sensors: sensorsReducer,
     },
     middleware: (getDefaultMiddleware) =>
         getDefaultMiddleware({

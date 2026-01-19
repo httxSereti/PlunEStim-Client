@@ -72,6 +72,12 @@ export interface PongMessage {
     payload?: never;
 }
 
+export interface SensorsInitialMessage {
+    id?: string;
+    type: 'sensors:init';
+    payload?: never;
+}
+
 export type WebSocketIncomingMessage =
     | ChatMessage
     | UserConnected
@@ -79,7 +85,8 @@ export type WebSocketIncomingMessage =
     | NotificationMessage
     | AuthErrorMessage
     | PingMessage
-    | PongMessage;
+    | PongMessage
+    | SensorsInitialMessage;
 
 export interface WebSocketConfig {
     url: string;

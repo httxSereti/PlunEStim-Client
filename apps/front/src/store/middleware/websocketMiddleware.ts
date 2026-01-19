@@ -1,9 +1,10 @@
 
 import type { Middleware } from '@reduxjs/toolkit';
 import type { RootState, AppDispatch } from '@/store';
-import type { WebSocketConfig, WebSocketMessage, WebSocketIncomingMessage } from '@/types';
+import type { WebSocketConfig, WebSocketMessage, WebSocketIncomingMessage, Sensor } from '@/types';
 import { setStatus, setError, incrementReconnect, resetReconnect } from '../slices/websocketSlice';
 import { logout } from '@/store/slices/authSlice';
+import { sensorsInitialized } from '../slices/sensorsSlice';
 
 export function createWebSocketMiddleware(config: WebSocketConfig): Middleware {
     const {
@@ -142,6 +143,13 @@ export function createWebSocketMiddleware(config: WebSocketConfig): Middleware {
 
                 // dispatch messages to redux stores
                 switch (message.type) {
+                    case 'sensors:init':
+                        {
+                            const sensors: Record<string, Sensor> = message.payload as unknown as Record<string, Sensor>
+                            console.log(message.payload)
+                            dispatch(sensorsInitialized(sensors))
+                            break;
+                        }
                     case 'notification':
                     case 'chat:message':
                         // dispatch(addMessage({ type: message.type, data: message.payload }));
