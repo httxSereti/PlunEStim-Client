@@ -6,6 +6,7 @@ export type {
     WebSocketIncomingMessage,
     WebSocketConfig,
     WebSocketState,
+    WebSocketCommandResponse,
     // Message types
     ChatMessage,
     UserConnected,

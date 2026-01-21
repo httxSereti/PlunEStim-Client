@@ -116,3 +116,7 @@ export interface WebSocketState {
     reconnectAttempts: number;
     lastConnected: number | null;
 }
+
+export interface WebSocketCommandResponse {
+    status: string;
+}

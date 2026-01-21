@@ -8,7 +8,10 @@ import {
 
 import { useEffect } from "react";
 
+import { Toaster } from "@pes/ui/components/sonner"
+
 import { ThemeProvider } from "@/components/ui/theme/theme-provider";
+
 
 import { Provider } from 'react-redux';
 import { store } from '@/store';
@@ -51,6 +54,7 @@ export function Layout({
                         <AppInitializer>
                             <WebSocketProvider>
                                 {children}
+                                <Toaster />
                             </WebSocketProvider>
                         </AppInitializer>
                     </Provider>

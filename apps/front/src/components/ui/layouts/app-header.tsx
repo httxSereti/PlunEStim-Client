@@ -4,6 +4,7 @@ import { SidebarIcon } from "lucide-react";
 import { Separator } from "@pes/ui/components/separator";
 import { ModeToggle } from "../theme/mode-toggle";
 import { useWebSocket } from "@/hooks/useWebSocket";
+import { HeaderStopButton } from "./header/header-stop-button";
 
 export function AppHeader() {
     const { toggleSidebar } = useSidebar()
@@ -32,6 +33,7 @@ export function AppHeader() {
                     <span className={`h-3 w-3 rounded-full ${dotColor}`} />
                 </div>
                 <div className="ml-auto flex items-center gap-2">
+                    <HeaderStopButton />
                     <div className="relative">
                         <ModeToggle />
                     </div>
