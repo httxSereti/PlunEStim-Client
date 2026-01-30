@@ -5,6 +5,8 @@ import { Button } from "@pes/ui/components/button";
 import RealTimeChart from "@/components/rt-chart";
 import { ChartAreaInteractive } from "@/components/area-chart";
 import { useWebSocket } from "@/hooks/useWebSocket";
+// import { UnitSettingsDialog } from "@/components/app/units/UnitSettingsDialog";
+import UnitUpdateSettingsForm from "@/components/app/units/UnitUpdateSettingsForm";
 // import usePluneWebSocket from "@/hooks/usePluneWebSocket";
 
 
@@ -20,10 +22,11 @@ export default function Home() {
   // const { readyState, events } = usePluneWebSocket();
   const { status, isConnected, send, reconnect } = useWebSocket();
 
-
   return (
-    <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
-      WebSocket: {status} {isConnected ? '🟢' : '🔴'}
+    <div className="flex flex-1 flex-row justify-center gap-4 p-4 pt-0">
+      <UnitUpdateSettingsForm unitName="UNIT1" />
+      <UnitUpdateSettingsForm unitName="UNIT2" />
+      <UnitUpdateSettingsForm unitName="UNIT3" />
 
       {/* <RealTimeChart /> */}
       {/* {readyState === 1 ? "Connected" : "Disconnected"} */}
