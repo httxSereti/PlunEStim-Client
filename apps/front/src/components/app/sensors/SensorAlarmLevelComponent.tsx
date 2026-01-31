@@ -1,13 +1,13 @@
-import type { FC } from "react";
 import { useWebSocket } from "@/hooks/useWebSocket";
-import { sensorsSelectors, sensorUpdated } from "@/store/slices/sensorsSlice";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
+import { sensorsSelectors, sensorUpdated } from "@/store/slices/sensorsSlice";
+import { Button } from "@pes/ui/components/button";
+import { ButtonGroup } from "@pes/ui/components/button-group";
+import { Field, FieldContent, FieldDescription, FieldLabel } from "@pes/ui/components/field";
+import { Input } from "@pes/ui/components/input";
 import { Skeleton } from "@pes/ui/components/skeleton";
 import { MinusIcon, PlusIcon } from "lucide-react";
-import { Button } from "@pes/ui/components/button";
-import { FieldLabel, Field, FieldContent, FieldDescription } from "@pes/ui/components/field";
-import { ButtonGroup } from "@pes/ui/components/button-group";
-import { Input } from "@pes/ui/components/input";
+import type { FC } from "react";
 
 type SensorAlarmLevelProps = {
     sensorId: string;
@@ -32,7 +32,7 @@ const SensorAlarmLevelComponent: FC<SensorAlarmLevelProps> = ({ sensorId, sensor
     const { sendCommand } = useWebSocket();
 
     const MIN_VALUE = 0;
-    const MAX_VALUE = 100;
+    const MAX_VALUE = 50;
 
     // if (sensor && !sensor.sensor_online)
     if (!sensor)

@@ -1,10 +1,11 @@
-import type { FC } from "react";
+import SensorAlarmLevelComponent from "@/components/app/sensors/SensorAlarmLevelComponent";
+import SensorAlarmStatusComponent from "@/components/app/sensors/SensorAlarmStatusComponent";
 import { useWebSocket } from "@/hooks/useWebSocket";
-import { Card, CardHeader, CardTitle, CardContent } from "@pes/ui/components/card";
-import { sensorsSelectors, sensorUpdated } from "@/store/slices/sensorsSlice";
-import { useAppDispatch, useAppSelector } from "@/store/hooks";
-import { Skeleton } from "@pes/ui/components/skeleton";
-import { MoreVertical, Edit, Trash2, Power } from "lucide-react";
+import { useAppSelector } from "@/store/hooks";
+import { sensorsSelectors } from "@/store/slices/sensorsSlice";
+import type { MotionSensor, SoundSensor } from "@/types";
+import { Button } from "@pes/ui/components/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@pes/ui/components/card";
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -13,10 +14,11 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from "@pes/ui/components/dropdown-menu";
-import { Button } from "@pes/ui/components/button";
-import { FieldLabel, Field, FieldContent, FieldDescription } from "@pes/ui/components/field";
-import { Switch } from "@pes/ui/components/switch";
-import SensorAlarmLevelComponent from "./SensorAlarmLevelComponent";
+import { Field, FieldContent, FieldDescription, FieldLabel } from "@pes/ui/components/field";
+import { Skeleton } from "@pes/ui/components/skeleton";
+import { Edit, MoreVertical, Power, Trash2 } from "lucide-react";
+import type { FC } from "react";
+import { toast } from "sonner";
 
 type SensorCardProps = {
     sensorId: string;
@@ -24,8 +26,6 @@ type SensorCardProps = {
 
 const SensorCard: FC<SensorCardProps> = ({ sensorId }) => {
     const sensor = useAppSelector(state => sensorsSelectors.selectById(state, sensorId));
-    const dispatch = useAppDispatch()
-
     const { sendCommand } = useWebSocket();
 
     if (!sensor)
@@ -42,23 +42,21 @@ const SensorCard: FC<SensorCardProps> = ({ sensorId }) => {
 
     const toggleStatus = async () => {
         try {
-            // toggle alarm_enable
             const newStatus = !sensor.alarm_enable;
 
-            const data = await sendCommand('sensors:update', {
+            await sendCommand('sensors:update', {
                 [sensorId]: {
                     alarm_enable: newStatus,
                 },
             });
+        } catch (err: unknown) {
+            const error: Error = err as Error;
 
-            console.log("API response:", data);
+            toast.error("Can't update Sensor", {
+                description: (error as Error).message,
+                position: "top-right",
+            })
 
-            // Update Redux store
-            dispatch(sensorUpdated({
-                id: sensorId,
-                changes: { alarm_enable: newStatus }
-            }));
-        } catch (error) {
             console.error('Failed to update sensor:', error);
         }
     };
@@ -118,21 +116,37 @@ const SensorCard: FC<SensorCardProps> = ({ sensorId }) => {
                         <>
                             <SensorAlarmLevelComponent sensorId={sensorId} sensorDataType="move" />
                             <SensorAlarmLevelComponent sensorId={sensorId} sensorDataType="position" />
+
+                            <Field orientation="horizontal" className="max-w-sm">
+                                <FieldContent>
+                                    <FieldLabel htmlFor="switch-focus-mode">
+                                        Alarm
+                                    </FieldLabel>
+                                    <FieldDescription>
+                                        {(sensor as MotionSensor).move_alarm_counter} / {(sensor as MotionSensor).move_alarm_number_action}
+                                    </FieldDescription>
+                                </FieldContent>
+                                {/* <Switch id="switch-focus-mode" defaultChecked={sensor.alarm_enable} onClick={toggleStatus} /> */}
+                            </Field>
                         </>
                     ) : (
-                        <SensorAlarmLevelComponent sensorId={sensorId} sensorDataType="sound" />
+                        <>
+                            <SensorAlarmLevelComponent sensorId={sensorId} sensorDataType="sound" />
+                            <Field orientation="horizontal" className="max-w-sm">
+                                <FieldContent>
+                                    <FieldLabel htmlFor="switch-focus-mode">
+                                        Alarm
+                                    </FieldLabel>
+                                    <FieldDescription>
+                                        {(sensor as SoundSensor).current_sound} <br />
+                                        {(sensor as SoundSensor).sound_alarm_counter} / {(sensor as SoundSensor).sound_alarm_number_action}
+                                    </FieldDescription>
+                                </FieldContent>
+                                {/* <Switch id="switch-focus-mode" defaultChecked={sensor.alarm_enable} onClick={toggleStatus} /> */}
+                            </Field>
+                        </>
                     )}
-                    <Field orientation="horizontal" className="max-w-sm">
-                        <FieldContent>
-                            <FieldLabel htmlFor="switch-focus-mode">
-                                Alarm
-                            </FieldLabel>
-                            <FieldDescription>
-                                Enable Alarm and the consequences.
-                            </FieldDescription>
-                        </FieldContent>
-                        <Switch id="switch-focus-mode" defaultChecked={sensor.alarm_enable} onClick={toggleStatus} />
-                    </Field>
+                    <SensorAlarmStatusComponent sensorId={sensorId} />
                 </div>
             </CardContent>
         </Card>

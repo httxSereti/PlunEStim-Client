@@ -1,11 +1,10 @@
 
-import type { Middleware } from '@reduxjs/toolkit';
-import type { RootState, AppDispatch } from '@/store';
-import type { WebSocketConfig, WebSocketMessage, WebSocketIncomingMessage, Sensor } from '@/types';
-import { setStatus, setError, incrementReconnect, resetReconnect } from '../slices/websocketSlice';
+import type { AppDispatch, RootState } from '@/store';
 import { logout } from '@/store/slices/authSlice';
-import { sensorsInitialized, sensorUpdated } from '../slices/sensorsSlice';
-import type { SensorsUpdateMessage } from '@/types/websocket.types';
+import { sensorsInitialized, sensorUpdated } from '@/store/slices/sensorsSlice';
+import { setError, setStatus, resetReconnect, incrementReconnect } from '@/store/slices/websocketSlice';
+import type { Sensor, WebSocketConfig, WebSocketIncomingMessage, WebSocketMessage } from '@/types';
+import type { Middleware } from '@reduxjs/toolkit';
 
 export function createWebSocketMiddleware(config: WebSocketConfig): Middleware {
     const {
@@ -107,7 +106,6 @@ export function createWebSocketMiddleware(config: WebSocketConfig): Middleware {
         ws.onmessage = (event) => {
             try {
                 const message: WebSocketIncomingMessage = JSON.parse(event.data);
-                console.log('WS MESSAGE RECEIVED:', message);
 
                 // Answer to heartbeat
                 if (message.type === 'pong') {
@@ -117,6 +115,8 @@ export function createWebSocketMiddleware(config: WebSocketConfig): Middleware {
                     }
                     return;
                 }
+
+                console.log('WS MESSAGE RECEIVED:', message);
 
                 // Catch Auth errors
                 if (message.type === 'auth:error' || message.type === 'error:unauthorized') {
