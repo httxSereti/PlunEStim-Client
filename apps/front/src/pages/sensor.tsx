@@ -10,7 +10,7 @@ import SensorCard from "@/components/app/sensors/SensorCard";
 // eslint-disable-next-line no-empty-pattern
 export function meta({ }: Route.MetaArgs) {
     return [
-        { title: "PES • Sensors" },
+        { title: "PES - Sensors" },
         { name: "description", content: "Welcome to React Router!" },
     ];
 }
