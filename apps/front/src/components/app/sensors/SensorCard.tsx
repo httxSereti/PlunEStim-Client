@@ -14,14 +14,17 @@ import {
     DropdownMenuTrigger,
 } from "@pes/ui/components/dropdown-menu";
 import { Button } from "@pes/ui/components/button";
+import { FieldLabel, Field, FieldContent, FieldDescription } from "@pes/ui/components/field";
+import { Switch } from "@pes/ui/components/switch";
+import SensorAlarmLevelComponent from "./SensorAlarmLevelComponent";
 
 type SensorCardProps = {
     sensorId: string;
 };
 
 const SensorCard: FC<SensorCardProps> = ({ sensorId }) => {
-    const dispatch = useAppDispatch()
     const sensor = useAppSelector(state => sensorsSelectors.selectById(state, sensorId));
+    const dispatch = useAppDispatch()
 
     const { sendCommand } = useWebSocket();
 
@@ -32,8 +35,6 @@ const SensorCard: FC<SensorCardProps> = ({ sensorId }) => {
             </div>
         )
 
-    console.log(sensor)
-
     const dotColor =
         sensor?.sensor_online === true
             ? "bg-green-500"
@@ -41,12 +42,12 @@ const SensorCard: FC<SensorCardProps> = ({ sensorId }) => {
 
     const toggleStatus = async () => {
         try {
-            // toggle sensor_online
-            const newStatus = !sensor.sensor_online;
+            // toggle alarm_enable
+            const newStatus = !sensor.alarm_enable;
 
             const data = await sendCommand('sensors:update', {
                 [sensorId]: {
-                    sensor_online: newStatus,
+                    alarm_enable: newStatus,
                 },
             });
 
@@ -55,7 +56,7 @@ const SensorCard: FC<SensorCardProps> = ({ sensorId }) => {
             // Update Redux store
             dispatch(sensorUpdated({
                 id: sensorId,
-                changes: { sensor_online: newStatus }
+                changes: { alarm_enable: newStatus }
             }));
         } catch (error) {
             console.error('Failed to update sensor:', error);
@@ -64,20 +65,18 @@ const SensorCard: FC<SensorCardProps> = ({ sensorId }) => {
 
     const handleEdit = () => {
         console.log("Edit sensor:", sensorId);
-        // Ajoutez votre logique d'édition ici
     };
 
     const handleDelete = () => {
         console.log("Delete sensor:", sensorId);
-        // Ajoutez votre logique de suppression ici
     };
 
     return (
-        <Card className="w-80 h-[225px]">
-            <CardHeader className="flex flex-row justify-between items-start">
-                <CardTitle className="text-sm font-medium">{sensor?.id}</CardTitle>
+        <Card className="">
+            <CardHeader className="flex flex-row justify-between items-center">
+                <CardTitle className="text-sm">{sensor?.id}</CardTitle>
 
-                <div className="flex items-center">
+                <div className="flex items-center gap-1">
                     <Button variant="ghost" size="icon" className="h-8 w-8">
                         <span
                             className={`h-3 w-3 rounded-full ${dotColor} cursor-pointer hover:opacity-80 transition-opacity`}
@@ -95,7 +94,7 @@ const SensorCard: FC<SensorCardProps> = ({ sensorId }) => {
                             <DropdownMenuSeparator />
                             <DropdownMenuItem onClick={toggleStatus}>
                                 <Power className="mr-2 h-4 w-4" />
-                                <span>{sensor.sensor_online ? "Désactiver" : "Activer"}</span>
+                                <span>{sensor.alarm_enable ? "Désactiver" : "Activer"}</span>
                             </DropdownMenuItem>
                             <DropdownMenuItem onClick={handleEdit}>
                                 <Edit className="mr-2 h-4 w-4" />
@@ -111,9 +110,30 @@ const SensorCard: FC<SensorCardProps> = ({ sensorId }) => {
                 </div>
             </CardHeader>
             <CardContent>
-                <p className="text-sm text-muted-foreground">
-                    {sensor?.sensor_type}
-                </p>
+                <div className="flex flex-col gap-5">
+                    <p className="text-sm text-muted-foreground">
+                        {sensor?.sensor_type}
+                    </p>
+                    {sensor.sensor_type === "motion" ? (
+                        <>
+                            <SensorAlarmLevelComponent sensorId={sensorId} sensorDataType="move" />
+                            <SensorAlarmLevelComponent sensorId={sensorId} sensorDataType="position" />
+                        </>
+                    ) : (
+                        <SensorAlarmLevelComponent sensorId={sensorId} sensorDataType="sound" />
+                    )}
+                    <Field orientation="horizontal" className="max-w-sm">
+                        <FieldContent>
+                            <FieldLabel htmlFor="switch-focus-mode">
+                                Alarm
+                            </FieldLabel>
+                            <FieldDescription>
+                                Enable Alarm and the consequences.
+                            </FieldDescription>
+                        </FieldContent>
+                        <Switch id="switch-focus-mode" defaultChecked={sensor.alarm_enable} onClick={toggleStatus} />
+                    </Field>
+                </div>
             </CardContent>
         </Card>
     );
