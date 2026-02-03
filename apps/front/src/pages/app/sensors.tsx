@@ -1,5 +1,5 @@
 import { Sensors } from "@/components/common/sensors/sensors";
-import type { Route } from "../+types/home";
+import type { Route } from ".react-router/types/src/pages/app/+types/sensors";
 
 // eslint-disable-next-line no-empty-pattern
 export function meta({ }: Route.MetaArgs) {

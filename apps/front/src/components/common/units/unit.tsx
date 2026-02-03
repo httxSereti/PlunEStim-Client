@@ -27,9 +27,6 @@ import {
     InputGroupText,
     InputGroupTextarea,
 } from "@pes/ui/components/input-group"
-import {
-    ButtonGroup
-} from "@pes/ui/components/button-group"
 import { PlusIcon, MinusIcon } from "lucide-react"
 
 const formSchema = z.object({
@@ -47,11 +44,12 @@ const formSchema = z.object({
         .max(100, "Intensity can't increase more than 100"),
 })
 
-type SensorCardProps = {
+type UnitProps = {
     unitName: string;
 };
 
-const UnitUpdateSettingsForm: FC<SensorCardProps> = ({ unitName }) => {
+export const Unit: FC<UnitProps> = ({ unitName }) => {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const [intensity, setIntensity] = useState<number>(0);
 
     const form = useForm<z.infer<typeof formSchema>>({
@@ -198,5 +196,3 @@ const UnitUpdateSettingsForm: FC<SensorCardProps> = ({ unitName }) => {
         </Card>
     )
 }
-
-export default UnitUpdateSettingsForm;
