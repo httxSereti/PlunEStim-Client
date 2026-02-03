@@ -14,11 +14,6 @@ import {
 } from "lucide-react"
 
 
-import { NavMain } from "@/components/ui/layouts/sidebar/nav-main"
-import { NavPlayground } from "@/components/ui/layouts/sidebar/nav-playground"
-import { NavProjects } from "@/components/ui/layouts/sidebar/nav-projects"
-import { NavUser } from "@/components/ui/layouts/sidebar/nav-user"
-import { TeamSwitcher } from "@/components/ui/layouts/sidebar/team-switcher"
 import {
   Sidebar,
   SidebarContent,
@@ -26,6 +21,11 @@ import {
   SidebarHeader,
   SidebarRail,
 } from "@pes/ui/components/sidebar"
+import { NavMain } from "@/components/layout/sidebar/nav-main"
+import { NavPlayground } from "@/components/layout/sidebar/nav-playground"
+import { NavProjects } from "@/components/layout/sidebar/nav-projects"
+import { NavUser } from "@/components/layout/sidebar/nav-user"
+import { TeamSwitcher } from "@/components/layout/sidebar/team-switcher"
 
 // This is sample data.
 const data = {
