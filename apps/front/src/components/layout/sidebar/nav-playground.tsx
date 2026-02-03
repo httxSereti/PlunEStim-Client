@@ -33,12 +33,10 @@ export function NavPlayground({
 }) {
     const location = useLocation()
 
-    // Fonction pour vérifier si un lien est actif
     const isLinkActive = (url: string) => {
         return location.pathname === url || location.pathname.startsWith(url + '/')
     }
 
-    // Fonction pour vérifier si un groupe parent est actif
     const isParentActive = (item: typeof items[0]) => {
         if (isLinkActive(item.url)) return true
         return item.items?.some(subItem => isLinkActive(subItem.url)) ?? false

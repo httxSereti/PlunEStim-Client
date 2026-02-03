@@ -1,10 +1,9 @@
 import * as React from "react"
 import {
-  AudioWaveform,
   BookOpen,
-  Command,
+  Cloud,
   Frame,
-  GalleryVerticalEnd,
+  HardDrive,
   Home,
   Map,
   PieChart,
@@ -25,37 +24,30 @@ import { NavMain } from "@/components/layout/sidebar/nav-main"
 import { NavPlayground } from "@/components/layout/sidebar/nav-playground"
 import { NavProjects } from "@/components/layout/sidebar/nav-projects"
 import { NavUser } from "@/components/layout/sidebar/nav-user"
-import { TeamSwitcher } from "@/components/layout/sidebar/team-switcher"
+import { AppSidebarHeader } from "@/components/layout/sidebar/app-sidebar-header"
 
 // This is sample data.
 const data = {
-  teams: [
-    {
-      name: "Sereti Technologies",
-      logo: GalleryVerticalEnd,
-      plan: "Enterprise",
-    },
-    {
-      name: "Acme Corp.",
-      logo: AudioWaveform,
-      plan: "Startup",
-    },
-    {
-      name: "Evil Corp.",
-      logo: Command,
-      plan: "Free",
-    },
-  ],
   navMain: [
     {
       title: "Home",
-      url: "/",
+      url: "/app/",
       icon: Home,
     },
     {
-      title: "Ask AI",
-      url: "#",
+      title: "Notifications",
+      url: "/app/notifications",
       icon: Sparkles,
+    },
+    {
+      title: "Units",
+      url: "/app/units",
+      icon: HardDrive,
+    },
+    {
+      title: "Sensors",
+      url: "/app/sensors",
+      icon: Cloud,
     },
   ],
   navPlayground: [
@@ -66,17 +58,17 @@ const data = {
       isActive: true,
       items: [
         {
-          title: "History",
-          url: "/app/test",
+          title: "Units",
+          url: "/app/units",
           icon: Map,
         },
         {
           title: "Sensors",
-          url: "/app/sensor",
+          url: "/app/sensors",
         },
         {
           title: "Settings",
-          url: "/random",
+          url: "/app/settings",
         },
       ],
     },
@@ -150,7 +142,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   return (
     <Sidebar collapsible="icon" {...props}>
       <SidebarHeader>
-        <TeamSwitcher teams={data.teams} />
+        <AppSidebarHeader />
       </SidebarHeader>
       <SidebarContent>
         <NavMain items={data.navMain} />
