@@ -3,7 +3,7 @@ import {
 } from "react-router";
 
 import { SidebarInset, SidebarProvider } from "@pes/ui/components/sidebar"
-import { AppHeader } from "@/components/layout/headers/app-header";
+import { AppHeader } from "@/components/layout/headers/common/app-header";
 import { AppSidebar } from "@/components/layout/sidebar/app-sidebar";
 
 export default function AppLayout() {

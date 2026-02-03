@@ -10,7 +10,7 @@ import { useEffect } from "react";
 
 import { Toaster } from "@pes/ui/components/sonner"
 
-import { ThemeProvider } from "@/components/ui/theme/theme-provider";
+import { ThemeProvider } from "@/components/layout/theme-provider";
 
 
 import { Provider } from 'react-redux';

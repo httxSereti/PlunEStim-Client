@@ -7,9 +7,9 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@pes/ui/components/dropdown-menu"
-import { useTheme } from "@/components/ui/theme/theme-provider"
+import { useTheme } from "@/components/layout/theme-provider"
 
-export function ModeToggle() {
+export function ThemeToggle() {
   const { setTheme } = useTheme()
 
   return (
