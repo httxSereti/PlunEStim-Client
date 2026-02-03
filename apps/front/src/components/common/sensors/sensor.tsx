@@ -1,5 +1,3 @@
-import SensorAlarmLevelComponent from "@/components/app/sensors/SensorAlarmLevelComponent";
-import SensorAlarmStatusComponent from "@/components/app/sensors/SensorAlarmStatusComponent";
 import { useWebSocket } from "@/hooks/useWebSocket";
 import { useAppSelector } from "@/store/hooks";
 import { sensorsSelectors } from "@/store/slices/sensorsSlice";
@@ -20,12 +18,14 @@ import { Progress } from "@pes/ui/components/progress";
 import { Edit, MoreVertical, Power, Trash2 } from "lucide-react";
 import type { FC } from "react";
 import { toast } from "sonner";
+import { SensorAlarmStatus } from "@/components/common/sensors/sensor-alarm-status";
+import { SensorAlarmLevel } from "@/components/common/sensors/sensor-alarm-level";
 
-type SensorCardProps = {
+type SensorProps = {
     sensorId: string;
 };
 
-const SensorCard: FC<SensorCardProps> = ({ sensorId }) => {
+export const Sensor: FC<SensorProps> = ({ sensorId }) => {
     const sensor = useAppSelector(state => sensorsSelectors.selectById(state, sensorId));
     const { sendCommand } = useWebSocket();
 
@@ -113,11 +113,11 @@ const SensorCard: FC<SensorCardProps> = ({ sensorId }) => {
                     {/* <p className="text-sm text-muted-foreground">
                             {sensor?.sensor_type}
                         </p> */}
-                    <SensorAlarmStatusComponent sensorId={sensorId} />
+                    <SensorAlarmStatus sensorId={sensorId} />
                     {sensor.sensor_type === "motion" ? (
                         <>
-                            <SensorAlarmLevelComponent sensorId={sensorId} sensorDataType="move" />
-                            <SensorAlarmLevelComponent sensorId={sensorId} sensorDataType="position" />
+                            <SensorAlarmLevel sensorId={sensorId} sensorDataType="move" />
+                            <SensorAlarmLevel sensorId={sensorId} sensorDataType="position" />
 
                             <Field orientation="horizontal" className="max-w-sm">
                                 <FieldContent>
@@ -133,7 +133,7 @@ const SensorCard: FC<SensorCardProps> = ({ sensorId }) => {
                         </>
                     ) : (
                         <>
-                            <SensorAlarmLevelComponent sensorId={sensorId} sensorDataType="sound" />
+                            <SensorAlarmLevel sensorId={sensorId} sensorDataType="sound" />
                             <Field className="max-w-sm w-full">
                                 <FieldLabel htmlFor="progress-upload" >
                                     <span>Current sound</span>
@@ -153,5 +153,3 @@ const SensorCard: FC<SensorCardProps> = ({ sensorId }) => {
         </Card>
     );
 }
-
-export default SensorCard;

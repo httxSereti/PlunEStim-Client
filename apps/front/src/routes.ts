@@ -9,7 +9,7 @@ export default [
     route("app", "layouts/AppLayout.tsx", [
         index("pages/home.tsx"),
         route("test", "pages/test.tsx"),
-        route("sensor", "pages/sensor.tsx"),
+        route("sensor", "pages/app/sensors.tsx"),
     ]),
 
     route("auth", "pages/auth/sign.tsx"),

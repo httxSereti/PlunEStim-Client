@@ -118,7 +118,7 @@ export default function UnitSettingsDialog() {
                         </div>
                     </DialogContent>
                 </Dialog>
-
+                {/* 
                 {submissions.length > 0 && (
                     <div className="mt-8">
                         <h2 className="text-xl font-semibold mb-4">Submissions</h2>
@@ -132,7 +132,7 @@ export default function UnitSettingsDialog() {
                             ))}
                         </div>
                     </div>
-                )}
+                )} */}
             </div>
         </div>
     );

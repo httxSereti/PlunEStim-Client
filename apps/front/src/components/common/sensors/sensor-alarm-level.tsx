@@ -25,7 +25,7 @@ const SENSOR_CONFIG = {
     }
 } as const;
 
-const SensorAlarmLevelComponent: FC<SensorAlarmLevelProps> = ({ sensorId, sensorDataType }) => {
+export const SensorAlarmLevel: FC<SensorAlarmLevelProps> = ({ sensorId, sensorDataType }) => {
     const sensor = useAppSelector(state => sensorsSelectors.selectById(state, sensorId));
     const dispatch = useAppDispatch()
     const { sendCommand } = useWebSocket();
@@ -132,5 +132,3 @@ const SensorAlarmLevelComponent: FC<SensorAlarmLevelProps> = ({ sensorId, sensor
         </Field>
     );
 }
-
-export default SensorAlarmLevelComponent;

@@ -11,7 +11,7 @@ type SensorAlarmStatusProps = {
     sensorId: string;
 };
 
-const SensorAlarmStatusComponent: FC<SensorAlarmStatusProps> = ({ sensorId }) => {
+export const SensorAlarmStatus: FC<SensorAlarmStatusProps> = ({ sensorId }) => {
     const sensor = useAppSelector(state => sensorsSelectors.selectById(state, sensorId));
     const { sendCommand } = useWebSocket();
 
@@ -57,5 +57,3 @@ const SensorAlarmStatusComponent: FC<SensorAlarmStatusProps> = ({ sensorId }) =>
         </Field>
     );
 }
-
-export default SensorAlarmStatusComponent;
