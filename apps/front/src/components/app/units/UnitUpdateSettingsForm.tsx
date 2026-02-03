@@ -89,25 +89,21 @@ const UnitUpdateSettingsForm: FC<SensorCardProps> = ({ unitName }) => {
             </CardHeader>
             <CardContent>
                 <div className="flex justify-center">
-                    <ButtonGroup
-                        orientation="horizontal"
-                        aria-label="Media controls"
-                        className="h-fit"
-                    >
-                        <Button variant="outline" size="icon">
-                            <PlusIcon />
+                    <div className="inline-flex h-10 items-center rounded-md border">
+                        <Button variant="ghost" size="icon" className="rounded-none border-r">
+                            <MinusIcon />
                         </Button>
                         <Input
                             id="form-rhf-demo-title"
-                            className="ml-2 mr-2 w-14"
+                            className="h-full w-14 border-0 text-center focus-visible:ring-0 focus-visible:ring-offset-0"
                             placeholder="100"
                             autoComplete="off"
                             value={intensity}
                         />
-                        <Button variant="outline" size="icon">
-                            <MinusIcon />
+                        <Button variant="ghost" size="icon" className="rounded-none border-l">
+                            <PlusIcon />
                         </Button>
-                    </ButtonGroup>
+                    </div>
                 </div>
                 <form id="form-rhf-demo" onSubmit={form.handleSubmit(onSubmit)}>
                     <FieldGroup>

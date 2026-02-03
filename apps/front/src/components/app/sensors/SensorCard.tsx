@@ -16,6 +16,7 @@ import {
 } from "@pes/ui/components/dropdown-menu";
 import { Field, FieldContent, FieldDescription, FieldLabel } from "@pes/ui/components/field";
 import { Skeleton } from "@pes/ui/components/skeleton";
+import { Progress } from "@pes/ui/components/progress";
 import { Edit, MoreVertical, Power, Trash2 } from "lucide-react";
 import type { FC } from "react";
 import { toast } from "sonner";
@@ -109,9 +110,10 @@ const SensorCard: FC<SensorCardProps> = ({ sensorId }) => {
             </CardHeader>
             <CardContent>
                 <div className="flex flex-col gap-5">
-                    <p className="text-sm text-muted-foreground">
-                        {sensor?.sensor_type}
-                    </p>
+                    {/* <p className="text-sm text-muted-foreground">
+                            {sensor?.sensor_type}
+                        </p> */}
+                    <SensorAlarmStatusComponent sensorId={sensorId} />
                     {sensor.sensor_type === "motion" ? (
                         <>
                             <SensorAlarmLevelComponent sensorId={sensorId} sensorDataType="move" />
@@ -123,30 +125,29 @@ const SensorCard: FC<SensorCardProps> = ({ sensorId }) => {
                                         Alarm
                                     </FieldLabel>
                                     <FieldDescription>
-                                        {(sensor as MotionSensor).move_alarm_counter} / {(sensor as MotionSensor).move_alarm_number_action}
                                     </FieldDescription>
                                 </FieldContent>
+                                {(sensor as MotionSensor).move_alarm_counter} / {(sensor as MotionSensor).move_alarm_number_action}
                                 {/* <Switch id="switch-focus-mode" defaultChecked={sensor.alarm_enable} onClick={toggleStatus} /> */}
                             </Field>
                         </>
                     ) : (
                         <>
                             <SensorAlarmLevelComponent sensorId={sensorId} sensorDataType="sound" />
-                            <Field orientation="horizontal" className="max-w-sm">
-                                <FieldContent>
-                                    <FieldLabel htmlFor="switch-focus-mode">
-                                        Alarm
-                                    </FieldLabel>
-                                    <FieldDescription>
-                                        {(sensor as SoundSensor).current_sound} <br />
-                                        {(sensor as SoundSensor).sound_alarm_counter} / {(sensor as SoundSensor).sound_alarm_number_action}
-                                    </FieldDescription>
-                                </FieldContent>
+                            <Field className="max-w-sm w-full">
+                                <FieldLabel htmlFor="progress-upload" >
+                                    <span>Current sound</span>
+                                    <span className="ml-auto">{(sensor as SoundSensor).current_sound * 2}/100</span>
+                                </FieldLabel>
+                                <Progress value={(sensor as SoundSensor).current_sound * 2} />
+                                {/* {(sensor as SoundSensor).current_sound} <br /> */}
+                                {/* {(sensor as SoundSensor).sound_delay_on} - {(sensor as SoundSensor).sound_delay_off}<br />
+                                        - <br />
+                                        {(sensor as SoundSensor).sound_alarm_counter} / {(sensor as SoundSensor).sound_alarm_number_action} */}
                                 {/* <Switch id="switch-focus-mode" defaultChecked={sensor.alarm_enable} onClick={toggleStatus} /> */}
                             </Field>
                         </>
                     )}
-                    <SensorAlarmStatusComponent sensorId={sensorId} />
                 </div>
             </CardContent>
         </Card>

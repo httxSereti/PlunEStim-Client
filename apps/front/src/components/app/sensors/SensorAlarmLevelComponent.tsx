@@ -2,7 +2,6 @@ import { useWebSocket } from "@/hooks/useWebSocket";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { sensorsSelectors, sensorUpdated } from "@/store/slices/sensorsSlice";
 import { Button } from "@pes/ui/components/button";
-import { ButtonGroup } from "@pes/ui/components/button-group";
 import { Field, FieldContent, FieldDescription, FieldLabel } from "@pes/ui/components/field";
 import { Input } from "@pes/ui/components/input";
 import { Skeleton } from "@pes/ui/components/skeleton";
@@ -102,12 +101,11 @@ const SensorAlarmLevelComponent: FC<SensorAlarmLevelProps> = ({ sensorId, sensor
                     Level to reach to trigger Alarm
                 </FieldDescription>
             </FieldContent>
-            <ButtonGroup
-                orientation="horizontal"
-                aria-label="Media controls"
-                className="h-fit gap-2"
-            >
-                <Button variant="outline" size="icon"
+            <div className="inline-flex h-10 items-center rounded-md border">
+                <Button
+                    variant="ghost"
+                    size="icon"
+                    className="rounded-none border-r"
                     onClick={handleDecrement}
                     disabled={currentAlarmLevel <= MIN_VALUE}
                 >
@@ -115,17 +113,22 @@ const SensorAlarmLevelComponent: FC<SensorAlarmLevelProps> = ({ sensorId, sensor
                 </Button>
                 <Input
                     id="input-alarm-level"
-                    className="max-w-14 text-center text-lg font-semibold"
+                    className="h-full w-15 border-0 text-center focus-visible:ring-0 focus-visible:ring-offset-0"
                     autoComplete="off"
                     onChange={handleInputChange}
                     onBlur={handleInputBlur}
                     value={currentAlarmLevel}
                 />
-                <Button variant="outline" size="icon" onClick={handleIncrement}
-                    disabled={currentAlarmLevel >= MAX_VALUE}>
+                <Button
+                    variant="ghost"
+                    size="icon"
+                    className="rounded-none border-l"
+                    onClick={handleIncrement}
+                    disabled={currentAlarmLevel >= MAX_VALUE}
+                >
                     <PlusIcon />
                 </Button>
-            </ButtonGroup>
+            </div>
         </Field>
     );
 }
