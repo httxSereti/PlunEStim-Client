@@ -5,7 +5,7 @@ import { Separator } from "@pes/ui/components/separator";
 import { useWebSocket } from "@/hooks/useWebSocket";
 import { HeaderStopButton } from "@/components/layout/headers/common/header-stop-button";
 
-export function AppHeader() {
+export function SensorHeader() {
     const { toggleSidebar } = useSidebar()
     const { status } = useWebSocket()
 
@@ -28,7 +28,6 @@ export function AppHeader() {
                 </Button>
                 <Separator orientation="vertical" className="mr-2 h-4" />
                 <div className="flex items-center space-x-2">
-                    <div className="ml-1">WebSocket</div>
                     <span className={`h-3 w-3 rounded-full ${dotColor}`} />
                 </div>
                 <div className="ml-auto flex items-center gap-2">
