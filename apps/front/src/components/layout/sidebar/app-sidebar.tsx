@@ -1,14 +1,15 @@
 import * as React from "react"
 import {
+  BellIcon,
   BookOpen,
   Cloud,
   Frame,
   HardDrive,
   Home,
   Map,
+  MessageCircleQuestion,
   PieChart,
   Settings2,
-  Sparkles,
   SquareTerminal,
 } from "lucide-react"
 
@@ -22,9 +23,9 @@ import {
 } from "@pes/ui/components/sidebar"
 import { NavMain } from "@/components/layout/sidebar/nav-main"
 import { NavPlayground } from "@/components/layout/sidebar/nav-playground"
-import { NavProjects } from "@/components/layout/sidebar/nav-projects"
 import { NavUser } from "@/components/layout/sidebar/nav-user"
 import { AppSidebarHeader } from "@/components/layout/sidebar/app-sidebar-header"
+import { NavFooter } from "@/components/layout/sidebar/nav-footer"
 
 // This is sample data.
 const data = {
@@ -33,11 +34,6 @@ const data = {
       title: "Home",
       url: "/app/",
       icon: Home,
-    },
-    {
-      title: "Notifications",
-      url: "/app/notifications",
-      icon: Sparkles,
     },
     {
       title: "Units",
@@ -73,7 +69,7 @@ const data = {
       ],
     },
     {
-      title: "Documentation",
+      title: "Games",
       url: "#",
       icon: BookOpen,
       items: [
@@ -91,29 +87,6 @@ const data = {
         },
         {
           title: "Changelog",
-          url: "#",
-        },
-      ],
-    },
-    {
-      title: "Settings",
-      url: "#",
-      icon: Settings2,
-      items: [
-        {
-          title: "General",
-          url: "#",
-        },
-        {
-          title: "Team",
-          url: "#",
-        },
-        {
-          title: "Billing",
-          url: "#",
-        },
-        {
-          title: "Limits",
           url: "#",
         },
       ],
@@ -136,6 +109,23 @@ const data = {
       icon: Map,
     },
   ],
+  navFooter: [
+    {
+      title: "Notifications",
+      url: "#",
+      icon: BellIcon,
+    },
+    {
+      title: "Settings",
+      url: "#",
+      icon: Settings2,
+    },
+    {
+      title: "Guide",
+      url: "#",
+      icon: MessageCircleQuestion,
+    },
+  ],
 }
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
@@ -147,7 +137,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       <SidebarContent>
         <NavMain items={data.navMain} />
         <NavPlayground items={data.navPlayground} />
-        <NavProjects projects={data.projects} />
+        {/* <NavProjects projects={data.projects} /> */}
+        <NavFooter items={data.navFooter} className="mt-auto" />
       </SidebarContent>
       <SidebarFooter>
         <NavUser />
