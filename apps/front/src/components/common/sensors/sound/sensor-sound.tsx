@@ -1,3 +1,4 @@
+import { Accumulations } from "@/components/common/sensors/common/accumulations";
 import { CfgSensorSlider } from "@/components/common/sensors/common/cfg-sensor-slider";
 import { LevelBlock } from "@/components/common/sensors/common/level-block";
 import { SensorAlarmStatus } from "@/components/common/sensors/common/sensor-alarm-status";
@@ -20,10 +21,24 @@ export const SensorSound: FC<SoundSensorProps> = ({ sensorId, sensor }) => {
                 note={`threshold ${sensor.sound_alarm_level} %`}
                 gaugeVal={sensor.current_sound} gaugeMax={90} isAlert={isAlarming}
             />
+
+            <Separator className="bg-border/40" />
+            <p className="text-[11px] uppercase text-muted-foreground/50">
+                Status
+            </p>
+
+            <Accumulations items={[{
+                label: "Sound",
+                counter: sensor.sound_alarm_counter,
+                delayOn: sensor.sound_delay_on,
+                delayOff: sensor.sound_delay_off,
+            }]} />
+
             <Separator className="bg-border/40" />
             <p className="text-[11px] uppercase text-muted-foreground/50">
                 Settings
             </p>
+
             <SensorAlarmStatus sensorId={sensorId} />
             <CfgSensorSlider
                 sensorId={sensorId}
@@ -55,6 +70,22 @@ export const SensorSound: FC<SoundSensorProps> = ({ sensorId, sensor }) => {
                 maxValue={120}
                 disabled={false}
             />
+
+            <Separator className="bg-border/40" />
+            <p className="text-[11px] uppercase text-muted-foreground/50">
+                Statistics
+            </p>
+
+            <div>
+                <div className="flex justify-between items-center py-1 border-b border-border/50 last:border-0">
+                    <span className="font-mono text-[11px] text-muted-foreground/50">Alarms fired</span>
+                    <span className="font-mono text-[11px] text-foreground/80">{sensor.sound_alarm_number}</span>
+                </div>
+                <div className="flex justify-between items-center py-1 border-b border-border/50 last:border-0">
+                    <span className="font-mono text-[11px] text-muted-foreground/50">Actions triggered</span>
+                    <span className="font-mono text-[11px] text-foreground/80">{sensor.sound_alarm_number_action}</span>
+                </div>
+            </div>
         </div>
     );
 }

@@ -1,3 +1,4 @@
+import { SensorBar } from "@/components/common/sensors/common/sensor-bar";
 import type { FC } from "react";
 
 type LevelBlockProps = {
@@ -9,28 +10,6 @@ type LevelBlockProps = {
     gaugeMax: number;
     isAlert: boolean;
 };
-
-type BarProps = {
-    pct: number;
-    isAlert: boolean;
-    isAmber?: boolean;
-};
-
-const Bar: FC<BarProps> = ({ pct, isAlert, isAmber }) => {
-    const color = isAlert
-        ? "hsl(var(--destructive))"
-        : isAmber
-            ? "#d97706"
-            : "hsl(var(--primary))";
-    return (
-        <div className="h-1 w-full rounded-full bg-muted/50 overflow-hidden">
-            <div
-                className="h-full rounded-full transition-all duration-500"
-                style={{ width: `${Math.min(100, pct)}%`, background: color, opacity: 0.85 }}
-            />
-        </div>
-    );
-}
 
 export const LevelBlock: FC<LevelBlockProps> = ({ label, value, unit, note, gaugeVal, gaugeMax, isAlert }) => {
     const pct = (gaugeVal / gaugeMax) * 100;
@@ -44,7 +23,7 @@ export const LevelBlock: FC<LevelBlockProps> = ({ label, value, unit, note, gaug
                 <span className={`font-mono text-3xl font-medium leading-none ${isAlert ? "text-destructive" : "text-foreground/90"}`}>{value}</span>
                 {unit && <span className="font-mono text-xs text-muted-foreground/50">{unit}</span>}
             </div>
-            <Bar pct={pct} isAlert={isAlert} />
+            <SensorBar pct={pct} isAlert={isAlert} />
         </div>
     );
 }
