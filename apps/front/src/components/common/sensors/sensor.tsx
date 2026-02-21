@@ -1,4 +1,4 @@
-import { SensorAlarmLevel } from "@/components/common/sensors/sensor-alarm-level";
+import { SensorMotion } from "@/components/common/sensors/motion/sensor-motion";
 import { SensorSound } from "@/components/common/sensors/sound/sensor-sound";
 import { useWebSocket } from "@/hooks/useWebSocket";
 import { useAppSelector } from "@/store/hooks";
@@ -14,7 +14,6 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from "@pes/ui/components/dropdown-menu";
-import { Field, FieldContent, FieldDescription, FieldLabel } from "@pes/ui/components/field";
 import { Skeleton } from "@pes/ui/components/skeleton";
 import { Edit, MoreVertical, Power, Trash2, Volume2 } from "lucide-react";
 import type { FC } from "react";
@@ -121,21 +120,10 @@ export const Sensor: FC<SensorProps> = ({ sensorId }) => {
             <CardContent>
                 <div className="flex flex-col gap-5">
                     {sensor.sensor_type === "motion" ? (
-                        <>
-                            <SensorAlarmLevel sensorId={sensorId} sensorDataType="move" />
-                            <SensorAlarmLevel sensorId={sensorId} sensorDataType="position" />
-
-                            <Field orientation="horizontal" className="max-w-sm">
-                                <FieldContent>
-                                    <FieldLabel htmlFor="switch-focus-mode">
-                                        Alarm
-                                    </FieldLabel>
-                                    <FieldDescription>
-                                    </FieldDescription>
-                                </FieldContent>
-                                {(sensor as MotionSensor).move_alarm_counter} / {(sensor as MotionSensor).move_alarm_number_action}
-                            </Field>
-                        </>
+                        <SensorMotion
+                            sensorId={sensorId}
+                            sensor={sensor as MotionSensor}
+                        />
                     ) : (
                         <SensorSound
                             sensorId={sensorId}
