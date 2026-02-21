@@ -11,6 +11,7 @@ import type { FC } from "react";
 type SensorAlarmLevelProps = {
     sensorId: string;
     sensorDataType: "move" | "position" | "sound";
+    maxValue?: number;
 };
 
 const SENSOR_CONFIG = {
@@ -25,15 +26,14 @@ const SENSOR_CONFIG = {
     }
 } as const;
 
-export const SensorAlarmLevel: FC<SensorAlarmLevelProps> = ({ sensorId, sensorDataType }) => {
+export const SensorAlarmLevel: FC<SensorAlarmLevelProps> = ({ sensorId, sensorDataType, maxValue }) => {
     const sensor = useAppSelector(state => sensorsSelectors.selectById(state, sensorId));
     const dispatch = useAppDispatch()
     const { sendCommand } = useWebSocket();
 
     const MIN_VALUE = 0;
-    const MAX_VALUE = 50;
+    const MAX_VALUE = maxValue ?? 50;
 
-    // if (sensor && !sensor.sensor_online)
     if (!sensor)
         return (
             <Skeleton className="h-[46px]" />
@@ -92,7 +92,7 @@ export const SensorAlarmLevel: FC<SensorAlarmLevelProps> = ({ sensorId, sensorDa
     };
 
     return (
-        <Field orientation="horizontal" className="max-w-sm">
+        <Field orientation="horizontal">
             <FieldContent>
                 <FieldLabel htmlFor="switch-focus-mode">
                     Level ({sensorDataType})

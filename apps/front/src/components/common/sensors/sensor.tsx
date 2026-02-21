@@ -1,3 +1,5 @@
+import { SensorAlarmLevel } from "@/components/common/sensors/sensor-alarm-level";
+import { SensorSound } from "@/components/common/sensors/sound/sensor-sound";
 import { useWebSocket } from "@/hooks/useWebSocket";
 import { useAppSelector } from "@/store/hooks";
 import { sensorsSelectors } from "@/store/slices/sensorsSlice";
@@ -14,12 +16,9 @@ import {
 } from "@pes/ui/components/dropdown-menu";
 import { Field, FieldContent, FieldDescription, FieldLabel } from "@pes/ui/components/field";
 import { Skeleton } from "@pes/ui/components/skeleton";
-import { Progress } from "@pes/ui/components/progress";
-import { Edit, MoreVertical, Power, Trash2 } from "lucide-react";
+import { Edit, MoreVertical, Power, Trash2, Volume2 } from "lucide-react";
 import type { FC } from "react";
 import { toast } from "sonner";
-import { SensorAlarmStatus } from "@/components/common/sensors/sensor-alarm-status";
-import { SensorAlarmLevel } from "@/components/common/sensors/sensor-alarm-level";
 
 type SensorProps = {
     sensorId: string;
@@ -32,7 +31,7 @@ export const Sensor: FC<SensorProps> = ({ sensorId }) => {
     if (!sensor)
         return (
             <div className="flex flex-col space-y-3">
-                <Skeleton className="h-[225px] w-80 rounded-xl" />
+                <Skeleton className="h-[425px]  rounded-xl" />
             </div>
         )
 
@@ -73,7 +72,16 @@ export const Sensor: FC<SensorProps> = ({ sensorId }) => {
     return (
         <Card className="">
             <CardHeader className="flex flex-row justify-between items-center">
-                <CardTitle className="text-sm">{sensor?.id}</CardTitle>
+                <CardTitle className="flex gap-2">
+                    <div className="p-2 rounded-lg bg-[#161226] border border-purple-800/40" >
+                        <Volume2 size={18} className="text-violet-400" />
+                    </div>
+                    <div className="flex flex-col justify-center">
+                        <div className="flex text-sm">
+                            {sensor?.id}
+                        </div>
+                    </div>
+                </CardTitle>
 
                 <div className="flex items-center gap-1">
                     <Button variant="ghost" size="icon" className="h-8 w-8">
@@ -107,13 +115,11 @@ export const Sensor: FC<SensorProps> = ({ sensorId }) => {
                         </DropdownMenuContent>
                     </DropdownMenu>
                 </div>
+
             </CardHeader>
+
             <CardContent>
                 <div className="flex flex-col gap-5">
-                    {/* <p className="text-sm text-muted-foreground">
-                            {sensor?.sensor_type}
-                        </p> */}
-                    <SensorAlarmStatus sensorId={sensorId} />
                     {sensor.sensor_type === "motion" ? (
                         <>
                             <SensorAlarmLevel sensorId={sensorId} sensorDataType="move" />
@@ -128,25 +134,13 @@ export const Sensor: FC<SensorProps> = ({ sensorId }) => {
                                     </FieldDescription>
                                 </FieldContent>
                                 {(sensor as MotionSensor).move_alarm_counter} / {(sensor as MotionSensor).move_alarm_number_action}
-                                {/* <Switch id="switch-focus-mode" defaultChecked={sensor.alarm_enable} onClick={toggleStatus} /> */}
                             </Field>
                         </>
                     ) : (
-                        <>
-                            <SensorAlarmLevel sensorId={sensorId} sensorDataType="sound" />
-                            <Field className="max-w-sm w-full">
-                                <FieldLabel htmlFor="progress-upload" >
-                                    <span>Current sound</span>
-                                    <span className="ml-auto">{(sensor as SoundSensor).current_sound * 2}/100</span>
-                                </FieldLabel>
-                                <Progress value={(sensor as SoundSensor).current_sound * 2} />
-                                {/* {(sensor as SoundSensor).current_sound} <br /> */}
-                                {/* {(sensor as SoundSensor).sound_delay_on} - {(sensor as SoundSensor).sound_delay_off}<br />
-                                        - <br />
-                                        {(sensor as SoundSensor).sound_alarm_counter} / {(sensor as SoundSensor).sound_alarm_number_action} */}
-                                {/* <Switch id="switch-focus-mode" defaultChecked={sensor.alarm_enable} onClick={toggleStatus} /> */}
-                            </Field>
-                        </>
+                        <SensorSound
+                            sensorId={sensorId}
+                            sensor={sensor as SoundSensor}
+                        />
                     )}
                 </div>
             </CardContent>

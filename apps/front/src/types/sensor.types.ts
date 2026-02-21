@@ -32,13 +32,13 @@ export interface MotionSensor extends BaseSensor {
 export interface SoundSensor extends BaseSensor {
     sensor_type: "sound";
 
-    sound_alarm_level: number;
-    sound_delay_on: number;
-    sound_delay_off: number;
+    sound_alarm_level: number; // level where it trigger
+    sound_delay_on: number; // nb of consecutive trigger to alarm 
+    sound_delay_off: number; // nb of seconds until it can trigger again
 
-    sound_alarm_counter: number;
-    sound_alarm_number: number;
-    sound_alarm_number_action: number;
+    sound_alarm_counter: number; // nb of moment level was trigger (not consecutive seconds just seconds)
+    sound_alarm_number: number; // nb of times alarm has been fired
+    sound_alarm_number_action: number; // nb of times alarm triggered an action
 
     current_sound: number;
 }
