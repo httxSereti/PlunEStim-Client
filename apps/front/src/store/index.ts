@@ -4,8 +4,10 @@ import websocketReducer from '@/store/slices/websocketSlice';
 import sensorsReducer from '@/store/slices/sensorsSlice';
 import { createWebSocketMiddleware } from '@/store/middleware/websocketMiddleware';
 
+const WS_URL = import.meta.env.VITE_WS_URL
+
 const wsMiddleware = createWebSocketMiddleware({
-    url: 'ws://localhost:8000/ws',
+    url: WS_URL,
     reconnect: true,
     reconnectAttempts: 10,
     reconnectInterval: 3000,

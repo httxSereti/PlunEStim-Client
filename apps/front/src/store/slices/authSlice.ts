@@ -34,7 +34,7 @@ const initialState: AuthState = {
     error: null,
 };
 
-const API_URL = 'http://localhost:8000';
+const API_URL = import.meta.env.VITE_API_URL;
 
 // Async thunks
 export const login = createAsyncThunk<
@@ -46,7 +46,7 @@ export const login = createAsyncThunk<
         try {
             const response = await fetch(`${API_URL}/auth/login?magic_token=${encodeURIComponent(credentials.magic_token)}`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 'Content-Type': 'application/json', "ngrok-skip-browser-warning": "69420" },
                 body: JSON.stringify(credentials),
             });
 
@@ -62,7 +62,7 @@ export const login = createAsyncThunk<
 
             // Fetch user data with the new token
             const userResponse = await fetch(`${API_URL}/auth/me`, {
-                headers: { 'Authorization': `Bearer ${data.access_token}` },
+                headers: { 'Authorization': `Bearer ${data.access_token}`, "ngrok-skip-browser-warning": "69420" },
             });
 
             if (!userResponse.ok) {
@@ -122,7 +122,7 @@ export const verifyToken = createAsyncThunk<
 
         try {
             const response = await fetch(`${API_URL}/auth/me`, {
-                headers: { 'Authorization': `Bearer ${token}` },
+                headers: { 'Authorization': `Bearer ${token}`, "ngrok-skip-browser-warning": "69420", },
             });
 
             if (!response.ok) {
