@@ -1,0 +1,7 @@
+{
+    "name": "app",
+    "scripts": {
+        "lint": "uv run ruff check .",
+        "dev": "uv run src/main.py"
+    }
+}
