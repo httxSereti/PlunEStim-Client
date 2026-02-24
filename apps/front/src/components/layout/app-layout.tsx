@@ -9,6 +9,7 @@ import { AppHeader } from "@/components/layout/headers/common/app-header";
 import { AppSidebar } from "@/components/layout/sidebar/app-sidebar";
 import type { RouteHandle } from "@/types/route-handle";
 import { SensorHeader } from "@/components/layout/headers/sensors/header";
+import { AdminUsersHeader } from "@/components/layout/headers/admin/users/header";
 
 export default function AppLayout() {
     const matches = useMatches() as UIMatch<unknown, RouteHandle>[];
@@ -19,6 +20,8 @@ export default function AppLayout() {
         switch (headerType) {
             case "sensors":
                 return <SensorHeader />;
+            case "adminUsers":
+                return <AdminUsersHeader />
             default:
                 return <AppHeader />;
         }

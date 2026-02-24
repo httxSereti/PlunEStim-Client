@@ -1,8 +1,7 @@
 import * as React from "react"
 import {
   BellIcon,
-  BookOpen,
-  Cloud,
+  Crown,
   Frame,
   HardDrive,
   Home,
@@ -11,6 +10,7 @@ import {
   PieChart,
   Settings2,
   SquareTerminal,
+  Wifi,
 } from "lucide-react"
 
 
@@ -26,6 +26,7 @@ import { NavPlayground } from "@/components/layout/sidebar/nav-playground"
 import { NavUser } from "@/components/layout/sidebar/nav-user"
 import { AppSidebarHeader } from "@/components/layout/sidebar/app-sidebar-header"
 import { NavFooter } from "@/components/layout/sidebar/nav-footer"
+import { NavAdmin } from "@/components/layout/sidebar/nav-admin"
 
 // This is sample data.
 const data = {
@@ -43,7 +44,7 @@ const data = {
     {
       title: "Sensors",
       url: "/app/sensors",
-      icon: Cloud,
+      icon: Wifi,
     },
   ],
   navPlayground: [
@@ -68,26 +69,25 @@ const data = {
         },
       ],
     },
+  ],
+  navAdmin: [
     {
-      title: "Games",
-      url: "#",
-      icon: BookOpen,
+      title: "Administration Panel",
+      url: "/",
+      icon: Crown,
+      isActive: true,
       items: [
         {
-          title: "Introduction",
-          url: "#",
+          title: "Dashboard",
+          url: "/app/admin/",
         },
         {
-          title: "Get Started",
-          url: "#",
+          title: "Users",
+          url: "/app/admin/users",
         },
         {
-          title: "Tutorials",
-          url: "#",
-        },
-        {
-          title: "Changelog",
-          url: "#",
+          title: "Settings",
+          url: "/app/admin/settings",
         },
       ],
     },
@@ -136,6 +136,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       </SidebarHeader>
       <SidebarContent>
         <NavMain items={data.navMain} />
+        <NavAdmin items={data.navAdmin} />
         <NavPlayground items={data.navPlayground} />
         {/* <NavProjects projects={data.projects} /> */}
         <NavFooter items={data.navFooter} className="mt-auto" />
