@@ -1,4 +1,4 @@
-# PlunES (PES aka PluneEStim)
+# ˚.✨⋆ PlunEStim (PES)
 
-coucou world! <3
-documentation in progress.
+Documentation is in progress...
+I work on the v2 of PES!

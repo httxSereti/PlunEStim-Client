@@ -1,9 +1,6 @@
-# ˚.✨⋆ PlunEStim
+# ˚.✨⋆ PlunEStim (app)
 
 PlunEStim is a Software running a Discord BOT as Client, managing 1+ EStim units using 2B-Estim Board over BT or Serial.
-
-> [!NOTE] Better readibility
-> Documentation is made using [Obsidian](https://obsidian.md/), to have the best reading clone and open this folder as vault.
 
 ## ˚.✨⋆ Project goals
 

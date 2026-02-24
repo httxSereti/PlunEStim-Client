@@ -8,4 +8,4 @@ CHASTER_API_URL = "https://api.chaster.app"
 PILLORY_PLAY_PREVIOUS_EVENTS = True
 
 # Userdata Path (where user files are stored like profiles, settings, backup, configurations)
-DIR_USERDATA = "L:\\Code\\Moon\\PES\\userdata"
+DIR_USERDATA = "L:\\Code\\Moon\\PluneES\\apps\\app\\userdata"

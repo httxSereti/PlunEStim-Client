@@ -5,3 +5,5 @@ firmware-tools/
 **.pyc
 resources/sounds/*.wav
 userdata/*
+backup/
+tmp/
