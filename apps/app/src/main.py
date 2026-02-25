@@ -206,7 +206,7 @@ logger = logging.getLogger()
 
 
 # filter
-def filter_logger(record):
+def filter_Logger(record):
     # if record.module == 'proactor_events':
     #   return False
     return True
@@ -226,19 +226,19 @@ console.setLevel(logging.INFO)
 console.setFormatter(
     logging.Formatter("[%(asctime)s] %(threadName)s %(module)s %(message)s")
 )
-console.addFilter(filter_logger)
+console.addFilter(filter_Logger)
 logger.addHandler(console)
 # Discord Log
 # debug
-logger_nextcord = logging.getLogger("nextcord")
-logger_nextcord.setLevel(logging.INFO)
+Logger_nextcord = logging.getLogger("nextcord")
+Logger_nextcord.setLevel(logging.INFO)
 handler_nextcord = logging.FileHandler(
     filename="nextcord.log", encoding="utf-8", mode="w"
 )
 handler_nextcord.setFormatter(
     logging.Formatter("[%(asctime)s]%(levelname)s:%(name)s: %(message)s")
 )
-logger_nextcord.addHandler(handler_nextcord)
+Logger_nextcord.addHandler(handler_nextcord)
 
 # init Store
 store = Store()
@@ -424,7 +424,7 @@ class UnitConnect:
         """
         reply = reply_raw.decode().rstrip("\r\n")
 
-        logger.debug("{} 2B reply : {}".format(self.name, reply))
+        Logger.info("{} 2B reply : {}".format(self.name, reply))
 
         if m := re.match(
             r"^(\d+):(\d+):(\d+):(\d+):(\d+):(\d+):([L,H]):(\d+):(\d+):(\d+):(\d+):(\d+):(2\..+)$",
@@ -443,7 +443,7 @@ class UnitConnect:
             self.settings_return["adj_4"] = int(m[11])
             self.settings_return["adj_3"] = int(m[12])
             return str(m[13])  # return firmware version
-        logger.info(
+        Logger.info(
             "Fail to parse the 2B {} reply {} -> reconnecting".format(self.name, reply)
         )
         self.detect()
@@ -459,14 +459,14 @@ class UnitConnect:
         # close previous open (lost connexion)
         if self.serial_dev:
             if self.serial_dev.isOpen():
-                logger.debug("{} close serial port".format(self.name))
+                Logger.debug("{} close serial port".format(self.name))
                 self.serial_dev.close()
             else:
-                logger.debug("{} port already close".format(self.name))
+                Logger.debug("{} port already close".format(self.name))
 
         # loop for BT serial connexion until succes
         while True:
-            logger.debug("{} BTscan for devices".format(self.name))
+            Logger.info("{} BTscan for devices".format(self.name))
             nearby_devices = bluetooth.discover_devices(
                 duration=1, lookup_names=True, flush_cache=True, lookup_class=False
             )
@@ -476,13 +476,13 @@ class UnitConnect:
             # Loop on BT device to find the good one
             for addr, name in nearby_devices:
                 if self.name == name:
-                    logger.debug("{} detected in {}".format(self.name, addr))
+                    Logger.debug("{} detected in {}".format(self.name, addr))
                     com_ports = list(serial.tools.list_ports.comports())
                     addr = addr.replace(":", "")
                     # Find the associated COM port
                     for com, des, hwenu in com_ports:
                         if addr in hwenu:
-                            logger.debug(
+                            Logger.debug(
                                 "{} serial port detected {}".format(self.name, com)
                             )
                             for retry in range(1, SERIAL_RETRY):
@@ -496,7 +496,7 @@ class UnitConnect:
                                         stopbits=serial.STOPBITS_ONE,
                                     )
                                 except serial.SerialException:
-                                    logger.debug(
+                                    Logger.debug(
                                         "{} serial retry open {}".format(
                                             self.name, retry
                                         )
@@ -508,19 +508,19 @@ class UnitConnect:
                                         self.serial_dev.readline()
                                     )
                                     if firmware_version is not None:
-                                        logger.info(
+                                        Logger.info(
                                             f"{self.name} serial access to 2B is OK"
                                         )
-                                        logger.debug(
+                                        Logger.debug(
                                             f"{self.name} version={firmware_version}"
                                         )
                                         self.settings_target["cnx_ok"] = True
                                         return self.serial_dev
-                                    logger.info(
+                                    Logger.info(
                                         "{} 2B not responding".format(self.name)
                                     )
                                     self.serial_dev.close()
-                                    logger.debug(
+                                    Logger.debug(
                                         "{} serial retry open {}".format(
                                             self.name, retry
                                         )
@@ -558,7 +558,7 @@ class UnitConnect:
         for field in FW_2B_CMD.keys():
             # check if update is needed
             if self.settings_return[field] != self.settings_target[field]:
-                logger.debug(
+                Logger.info(
                     "{} adjust {} {} -> {}".format(
                         self.name,
                         field,
@@ -573,7 +573,7 @@ class UnitConnect:
                     cmd = FW_2B_CMD[field].split("-")[int(self.settings_target[field])]
                 # if something to do
                 if cmd != "":
-                    logger.debug("{} cmd {}".format(self.name, cmd))
+                    Logger.info("{} cmd {}".format(self.name, cmd))
                     # check if target and 2B synchronized on the next call
                     self.settings_target["sync"] = False
                     no_updated = False
@@ -600,6 +600,7 @@ def thread_bt_unit(unit: str, settings: dict) -> None:
             bt = UnitConnect(unit, threads_settings[unit])
 
             cycle = 0  # for the keepalive
+            Logger.info(f"cycle={cycle}")
             while True:
                 # if new values are waiting
                 if settings["updated"]:
@@ -620,7 +621,7 @@ def thread_bt_unit(unit: str, settings: dict) -> None:
                     time.sleep(0.1)
                     cycle = cycle + 1
         except Exception as err:
-            logger.info(f"Thread error with estim unit {unit} : {err=}, {type(err)=}")
+            Logger.info(f"Thread error with estim unit {unit} : {err=}, {type(err)=}")
             time.sleep(30)
 
 
@@ -1658,6 +1659,7 @@ class Bot2b3(NextcordBot):
                                 )
                                 threads_settings[unit]["updated"] = True
                                 threads_settings[unit][ch_name] = new_val
+                                pprint(threads_settings[unit])
                 if len(txt) == 0:
                     await interaction.response.send_message(
                         "There are no channel with this usage"
@@ -2110,14 +2112,14 @@ class Bot2b3(NextcordBot):
                                 },
                                 headers=CHASTER_HEADERS,
                             ) as update_dur:
-                                logger.debug(update_dur.text())
+                                Logger.debug(update_dur.text())
                             if not EVENT_ACTION[type_action]["only_max"]:
                                 async with session.post(
                                     f"{CHASTER_URL}/locks/{self.chaster_lockid}/update-time",
                                     json={"duration": duration},
                                     headers=CHASTER_HEADERS,
                                 ) as update_dur:
-                                    logger.debug(update_dur.text())
+                                    Logger.debug(update_dur.text())
         else:
             Logger.info("[Actions] New event type {} unknow".format(type_action))
 
@@ -2324,8 +2326,8 @@ class Bot2b3(NextcordBot):
         except asyncio.CancelledError:
             raise
         except Exception:
-            logger.warning(f"Task exception bt_sensor_alarm")
-            logger.debug(traceback.print_exc())
+            Logger.warning(f"Task exception bt_sensor_alarm")
+            Logger.debug(traceback.print_exc())
 
     # Chaster detect active lock et task/pillory pooling
     async def set_chaster(self) -> None:
@@ -2344,7 +2346,7 @@ class Bot2b3(NextcordBot):
                 if len(json_feed) > 0:
                     # get the first active lock
                     if not self.chaster_lockid:
-                        logger.warning(
+                        Logger.warning(
                             "Chaster active lock detected lockid : {}".format(
                                 json_feed[0]["_id"]
                             )
@@ -2360,7 +2362,7 @@ class Bot2b3(NextcordBot):
                             if taskid:
                                 if self.chaster_taskid != taskid:
                                     self.chaster_taskvote = {}  # New poll, reset previous results
-                                    logger.warning(
+                                    Logger.warning(
                                         "Chaster tasks voting detected taskid : {}".format(
                                             taskid
                                         )
@@ -2374,7 +2376,7 @@ class Bot2b3(NextcordBot):
                             pilloryid = json_feed[0]["extensions"][idx]["_id"]
                             if pilloryid:
                                 if self.chaster_pilloryid != pilloryid:
-                                    logger.warning(
+                                    Logger.warning(
                                         "Chaster pillory detected pilloryid : {}".format(
                                             pilloryid
                                         )
@@ -2389,8 +2391,8 @@ class Bot2b3(NextcordBot):
         except asyncio.CancelledError:
             raise
         except Exception:
-            logger.warning(f"Task exception set_chaster")
-            logger.debug(traceback.print_exc())
+            Logger.warning(f"Task exception set_chaster")
+            Logger.debug(traceback.print_exc())
 
     async def chaster_history(self) -> None:
         """
@@ -2417,21 +2419,21 @@ class Bot2b3(NextcordBot):
                         # parse voting
                         if chaster_event["type"] == "link_time_changed":
                             if "duration" not in chaster_event["payload"]:
-                                logger.warning("new chaster vote without duration")
+                                Logger.warning("new chaster vote without duration")
                                 await self.add_event_action(
                                     "vote",
                                     "vote" + chaster_event["_id"],
                                     time.localtime(),
                                 )
                             elif chaster_event["payload"]["duration"] > 0:
-                                logger.warning("new chaster vote add")
+                                Logger.warning("new chaster vote add")
                                 await self.add_event_action(
                                     "vote",
                                     "vote" + chaster_event["_id"],
                                     time.localtime(),
                                 )
                             else:
-                                logger.warning("new chaster vote sub")
+                                Logger.warning("new chaster vote sub")
                                 await self.add_event_action(
                                     "vote_sub",
                                     "vote" + chaster_event["_id"],
@@ -2458,7 +2460,7 @@ class Bot2b3(NextcordBot):
                                     time.localtime(),
                                 )
                             else:
-                                logger.warning(
+                                Logger.warning(
                                     "unknow wheel of fortune test:"
                                     + chaster_event["payload"]["segment"]["text"]
                                 )
@@ -2472,8 +2474,8 @@ class Bot2b3(NextcordBot):
         except asyncio.CancelledError:
             raise
         except Exception:
-            logger.warning(f"Task exception chaster_history")
-            logger.debug(traceback.print_exc())
+            Logger.warning(f"Task exception chaster_history")
+            Logger.debug(traceback.print_exc())
 
     # Chaster parse task pooling
     async def chaster_task(self) -> None:
@@ -2517,7 +2519,7 @@ class Bot2b3(NextcordBot):
                             self.chaster_taskvote[self.chaster_taskid][type_action],
                             nb_votes,
                         ):
-                            logger.warning(f"new chaster vote task {type_action}")
+                            Logger.warning(f"new chaster vote task {type_action}")
                             # add event to queue
                             await self.add_event_action(
                                 type_action,
@@ -2540,8 +2542,8 @@ class Bot2b3(NextcordBot):
         except asyncio.CancelledError:
             raise
         except Exception:
-            logger.warning(f"Task exception chaster_task")
-            logger.debug(traceback.print_exc())
+            Logger.warning(f"Task exception chaster_task")
+            Logger.debug(traceback.print_exc())
 
     # for exception in tasks chaster_pillory
     @tasks.loop(seconds=30)
@@ -2552,7 +2554,7 @@ class Bot2b3(NextcordBot):
             raise
         except Exception:
             Logger.error(f"[Chaster-Threads] Task exception chaster_pillory")
-            logger.debug(traceback.print_exc())
+            Logger.debug(traceback.print_exc())
 
     # Event action queueing
     async def event_queue_mgmt(self):
@@ -2585,7 +2587,7 @@ class Bot2b3(NextcordBot):
                     queue_nb_run = queue_nb_run + 1
             else:
                 # Action Finished
-                logger.warning(
+                Logger.warning(
                     "{} action stop after {} sec".format(
                         self.action_queue[idx]["display"],
                         self.action_queue[idx]["duration"],
@@ -2643,8 +2645,8 @@ class Bot2b3(NextcordBot):
         except asyncio.CancelledError:
             raise
         except Exception:
-            logger.warning(f"Task exception event_queue_mgmt")
-            logger.debug(traceback.print_exc())
+            Logger.warning(f"Task exception event_queue_mgmt")
+            Logger.debug(traceback.print_exc())
 
     # update boot status
     async def update_status(self):
@@ -2676,8 +2678,8 @@ class Bot2b3(NextcordBot):
         except asyncio.CancelledError:
             raise
         except Exception:
-            logger.warning(f"Task exception update_status")
-            logger.debug(traceback.print_exc())
+            Logger.warning(f"Task exception update_status")
+            Logger.debug(traceback.print_exc())
 
     # @Bot is Ready
     async def on_ready(self):
@@ -2708,7 +2710,7 @@ class Bot2b3(NextcordBot):
 
     # cmd arg errors
     async def on_command_error(self, context, exception):
-        logger.error(str(exception))
+        Logger.error(str(exception))
 
 
 def sensor_check_val(sensor_name: str, measure: str, val: int) -> None:
@@ -2903,7 +2905,7 @@ def thread_sensors_bt(sensor: str, addr: str, service: str) -> None:
         except BleakDeviceNotFoundError:
             time.sleep(30)
         except Exception as err:
-            logger.info(
+            Logger.info(
                 f"Thread error in start_sensors_bt {sensor}: {err=}, {type(err)=}"
             )
             time.sleep(30)
