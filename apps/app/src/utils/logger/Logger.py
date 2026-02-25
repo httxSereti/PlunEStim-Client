@@ -1,4 +1,5 @@
 from datetime import datetime
+from constants import DEBUG
 
 
 class Colors:
@@ -115,7 +116,9 @@ class Logger:
         removeEnd: :class:`bool`
             Remove End of line.
         """
-        Logger.log(f"{Colors.PURPLE}{message}", removeEnd=removeEnd)
+
+        if DEBUG:
+            Logger.log(f"{Colors.PURPLE}{message}", removeEnd=removeEnd)
 
     @staticmethod
     def formatMessage(message: str, color: str = Colors.BLUE):

@@ -9,3 +9,6 @@ PILLORY_PLAY_PREVIOUS_EVENTS = True
 
 # Userdata Path (where user files are stored like profiles, settings, backup, configurations)
 DIR_USERDATA = "L:\\Code\\Moon\\PluneES\\apps\\app\\userdata"
+
+# DEBUG mode
+DEBUG = False
