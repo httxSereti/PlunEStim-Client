@@ -1,11 +1,12 @@
 import threading
-import asyncio
 from typing import Dict, Optional, Set
 
 from models.User import User
 
 from api.ws.websocket_manager import WebSocketManager
 from typings import UnitDict, Role, Permission
+from api.ws.websocket_notifier import ws_notifier
+
 
 class Store:
     """
@@ -36,7 +37,7 @@ class Store:
                     UnitDict.UNIT3.value: {},
                 }
                 self._sensors_settings: Dict = {}
-                
+
                 # Initalize Sensors
                 self._init_sensors()
 
@@ -86,7 +87,7 @@ class Store:
 
         self._sensors_settings["motion1"] = motion_config
         self._sensors_settings["motion2"] = motion_config.copy()
-        
+
         self._sensors_settings["motion2"]["id"] = "motion2"
 
         # Sound sensor init
@@ -165,52 +166,38 @@ class Store:
     def set_sensor_setting(self, key: str, value):
         with self._sensors_lock:
             self._sensors_settings[key] = value
-        
+
         # broadcast change
         self._broadcast_sensor_update(key, value)
-            
+
     def update_sensor_fields(self, sensor_name: str, fields: Dict):
         with self._sensors_lock:
             if sensor_name not in self._sensors_settings:
                 raise KeyError(f"Sensor '{sensor_name}' doesn't exist")
             self._sensors_settings[sensor_name].update(fields)
-        
+
         # broadcast only updated fields
         self._broadcast_sensor_update(sensor_name, fields, partial=True)
-    
+
     def update_sensor_field(self, sensor_name: str, field_name: str, value):
         with self._sensors_lock:
             if sensor_name not in self._sensors_settings:
-                raise KeyError(f"Sensor '{sensor_name}'  doesn't exist")
+                raise KeyError(f"Sensor '{sensor_name}' doesn't exist")
             self._sensors_settings[sensor_name][field_name] = value
-        
+
         # broadcast only updated field
         self._broadcast_sensor_update(sensor_name, {field_name: value}, partial=True)
-    
-    def _broadcast_sensor_update(self, sensor_id: str, data: Dict, partial: bool = False):
+
+    def _broadcast_sensor_update(
+        self, sensor_id: str, data: Dict, partial: bool = False
+    ):
         """
-            Broadcast to WebSocket clients sensor updates
+        Broadcast to WebSocket clients sensor updates
         """
         try:
-            try:
-                loop = asyncio.get_running_loop()
-            except RuntimeError:
-                loop = asyncio.get_event_loop()
-                if loop.is_closed():
-                    return
-            
-            message = {
-                "type": "sensors:update",
-                "payload": {
-                    "id": sensor_id,
-                    "partial": partial,
-                    "changes": data
-                }
-            }
-            
-            asyncio.run_coroutine_threadsafe(
-                self._websocket.broadcast(message),
-                loop
+            ws_notifier.notify(
+                payload_type="sensors:update",
+                payload={"id": sensor_id, "partial": partial, "changes": data},
             )
         except Exception as e:
             print(f"[WebSocket] Error when broadcast sensor update: {e}")

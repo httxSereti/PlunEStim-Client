@@ -58,6 +58,8 @@ from models.User import User
 
 from utils.users.generate_root_access import generate_root_access
 
+from contextlib import asynccontextmanager
+from api.ws.websocket_notifier import ws_notifier
 from api.rest import users, auth, admin
 
 # load env
@@ -250,7 +252,18 @@ store = Store()
 SECRET_KEY = os.getenv("JWT_SECRET_KEY")
 ALGORITHM = "HS256"
 
-app = FastAPI()
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # startup
+    loop = asyncio.get_event_loop()
+    ws_notifier.setup(loop)
+    asyncio.create_task(ws_notifier.consume(store.websocket))
+    yield
+    # shutdown
+
+
+app = FastAPI(lifespan=lifespan)
 
 app.include_router(users.router)
 app.include_router(auth.router)
@@ -1964,15 +1977,13 @@ class Bot2b3(NextcordBot):
         Logger.info(f"Action received! {type_action}")
         # action parsed in the event
 
-        await store.websocket.broadcast(
-            {
-                "type": "event-trigger",
-                "payload": {
-                    "type_action": type_action,
-                    "origin_action": origin_action,
-                    "event_time": event_time,
-                },
-            }
+        ws_notifier.notify(
+            payload_type="events:triggered",
+            payload={
+                "type_action": type_action,
+                "origin_action": origin_action,
+                "event_time": event_time,
+            },
         )
 
         m = re.search("^wof_([A-Z])([A-Z,a-z])([A-Z,a-z])$", type_action)
@@ -2202,21 +2213,21 @@ class Bot2b3(NextcordBot):
                         )
                     )
 
-                    await store.websocket.broadcast(
-                        {
-                            "type": "level-update",
-                            "payload": {
-                                "electrode_name": threads_settings[unit][
-                                    f"ch_{ch}_use"
-                                ],
-                                "type": action["type"],
-                                "unit": unit,
-                                "channel": ch_name,
-                                "level_old": old_val,
-                                "level_new": new_val,
-                            },
-                        }
-                    )
+                    # await store.websocket.broadcast(
+                    #     {
+                    #         "type": "level-update",
+                    #         "payload": {
+                    #             "electrode_name": threads_settings[unit][
+                    #                 f"ch_{ch}_use"
+                    #             ],
+                    #             "type": action["type"],
+                    #             "unit": unit,
+                    #             "channel": ch_name,
+                    #             "level_old": old_val,
+                    #             "level_new": new_val,
+                    #         },
+                    #     }
+                    # )
 
         # profile update
         elif action["type"] == "pro":
@@ -2847,16 +2858,10 @@ async def sensor_bt(sensor_name: str, address: str, char_uuid: str) -> None:
             sensor_check_val(sensor_name, "move", 0)
             sensor_check_val(sensor_name, "position", 0)
 
-        # get current loop and queue ws update
-        loop = asyncio.get_event_loop()
-        asyncio.run_coroutine_threadsafe(
-            store.websocket.broadcast(
-                {
-                    "type": "sensors:update",
-                    "payload": {"id": sensor_name, "changes": {"sensor_online": False}},
-                }
-            ),
-            loop,
+        # queue ws update
+        ws_notifier.notify(
+            payload_type="sensors:update",
+            payload={"id": sensor_name, "changes": {"sensor_online": False}},
         )
 
         disconnected_event.set()
@@ -2867,16 +2872,10 @@ async def sensor_bt(sensor_name: str, address: str, char_uuid: str) -> None:
         Logger.info(f"[Sensors] {sensor_name} sensor is connected")
         current_sensor_settings["sensor_online"] = True
 
-        # get current loop and queue ws update
-        loop = asyncio.get_event_loop()
-        asyncio.run_coroutine_threadsafe(
-            store.websocket.broadcast(
-                {
-                    "type": "sensors:update",
-                    "payload": {"id": sensor_name, "changes": {"sensor_online": True}},
-                }
-            ),
-            loop,
+        # queue ws update
+        ws_notifier.notify(
+            payload_type="sensors:update",
+            payload={"id": sensor_name, "changes": {"sensor_online": True}},
         )
 
         await client.start_notify(char_uuid, partial(sensor_notification, sensor_name))
@@ -3105,9 +3104,6 @@ async def upd():
     #     'pillory_chaster' + '_' + "lucie",
     #     time.localtime()
     # )
-    await store.websocket.broadcast(
-        {"type": "sensor-notification", "payload": ["sensor 1 updated"]}
-    )
 
     return {"success": "OK"}
 
