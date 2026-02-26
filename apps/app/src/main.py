@@ -51,11 +51,10 @@ from typings import *
 from typings import Permission
 from services.chaster import *
 from services.notifier import *
+from utils import Logger
 from utils import *
 
 from store import Store
-from models.User import User
-
 from utils.users.generate_root_access import generate_root_access
 
 from contextlib import asynccontextmanager
@@ -437,7 +436,7 @@ class UnitConnect:
         """
         reply = reply_raw.decode().rstrip("\r\n")
 
-        Logger.info("{} 2B reply : {}".format(self.name, reply))
+        Logger.debug("{} 2B reply : {}".format(self.name, reply))
 
         if m := re.match(
             r"^(\d+):(\d+):(\d+):(\d+):(\d+):(\d+):([L,H]):(\d+):(\d+):(\d+):(\d+):(\d+):(2\..+)$",
@@ -455,6 +454,12 @@ class UnitConnect:
             self.settings_return["level_map"] = int(m[10])
             self.settings_return["adj_4"] = int(m[11])
             self.settings_return["adj_3"] = int(m[12])
+
+            # ws_notifier.notify(
+            #     "units:update",
+            #     {self.name: {**self.settings_return}},
+            # )
+
             return str(m[13])  # return firmware version
         Logger.info(
             "Fail to parse the 2B {} reply {} -> reconnecting".format(self.name, reply)
@@ -567,18 +572,22 @@ class UnitConnect:
         self.serial_dev.write(b"\n\r")
         self.parse_reply(self.serial_dev.readline())
         no_updated = True
+        updated_fields: dict = {}
+
         # loop on all 2B settings (the order is important)
         for field in FW_2B_CMD.keys():
             # check if update is needed
             if self.settings_return[field] != self.settings_target[field]:
                 Logger.info(
-                    "{} adjust {} {} -> {}".format(
+                    "[{}] Adjust '{}' {} -> {}".format(
                         self.name,
                         field,
                         self.settings_return[field],
                         self.settings_target[field],
                     )
                 )
+
+                updated_fields[field] = self.settings_target[field]
                 # the update command can be fixed value or an argument
                 if len(FW_2B_CMD[field]) == 1:
                     cmd = "{}{}".format(FW_2B_CMD[field], self.settings_target[field])
@@ -586,7 +595,7 @@ class UnitConnect:
                     cmd = FW_2B_CMD[field].split("-")[int(self.settings_target[field])]
                 # if something to do
                 if cmd != "":
-                    Logger.info("{} cmd {}".format(self.name, cmd))
+                    Logger.debug("{} cmd {}".format(self.name, cmd))
                     # check if target and 2B synchronized on the next call
                     self.settings_target["sync"] = False
                     no_updated = False
@@ -594,6 +603,12 @@ class UnitConnect:
         # if no change it is synchronized !
         if no_updated:
             self.settings_target["sync"] = True
+        else:
+            ws_notifier.notify(
+                "units:update",
+                {self.name: updated_fields},
+            )
+
         return no_updated
 
 
