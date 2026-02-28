@@ -628,7 +628,6 @@ def thread_bt_unit(unit: str, settings: dict) -> None:
             bt = UnitConnect(unit, threads_settings[unit])
 
             cycle = 0  # for the keepalive
-            Logger.info(f"cycle={cycle}")
             while True:
                 # if new values are waiting
                 if settings["updated"]:
@@ -649,7 +648,9 @@ def thread_bt_unit(unit: str, settings: dict) -> None:
                     time.sleep(0.1)
                     cycle = cycle + 1
         except Exception as err:
-            Logger.info(f"Thread error with estim unit {unit} : {err=}, {type(err)=}")
+            Logger.info(
+                f"[BTUnit] Thread error with estim unit {unit} : {err=}, {type(err)=}"
+            )
             time.sleep(30)
 
 
@@ -3029,6 +3030,7 @@ def mk2b_init():
     # Init 2B threads settings
     for init_bt_name in BT_UNITS:
         threads_settings[init_bt_name] = {
+            "id": init_bt_name,
             # Channel A
             "ch_A": 0,  # ch_A target level for the 2B
             "ch_A_max": 0,  # ch_A set max value
@@ -3150,6 +3152,8 @@ async def websocket_endpoint(websocket: WebSocket, token: str):
         await websocket.send_json(
             {"type": "sensors:init", "payload": store.get_all_sensors_settings()}
         )
+
+        await websocket.send_json({"type": "units:init", "payload": threads_settings})
 
         # Heartbeat and Message handling
         while True:

@@ -41,3 +41,8 @@ export type {
     SoundSensor,
     SensorsState,
 } from './sensor.types';
+
+export type {
+    UnitsState,
+    UnitSettings
+} from './units.types';

@@ -2,8 +2,9 @@
 import type { AppDispatch, RootState } from '@/store';
 import { logout } from '@/store/slices/authSlice';
 import { sensorsInitialized, sensorUpdated } from '@/store/slices/sensorsSlice';
+import { unitsInitialized, unitUpdated } from '@/store/slices/unitsSlice';
 import { setError, setStatus, resetReconnect, incrementReconnect } from '@/store/slices/websocketSlice';
-import type { Sensor, WebSocketConfig, WebSocketIncomingMessage, WebSocketMessage } from '@/types';
+import type { Sensor, UnitSettings, WebSocketConfig, WebSocketIncomingMessage, WebSocketMessage } from '@/types';
 import type { Middleware } from '@reduxjs/toolkit';
 
 export function createWebSocketMiddleware(config: WebSocketConfig): Middleware {
@@ -144,15 +145,32 @@ export function createWebSocketMiddleware(config: WebSocketConfig): Middleware {
 
                 // dispatch messages to redux stores
                 switch (message.type) {
+                    /**
+                     * @Sensors 
+                     * */
                     case 'sensors:init':
                         {
                             const sensors: Record<string, Sensor> = message.payload as unknown as Record<string, Sensor>
-                            console.log(message.payload)
                             dispatch(sensorsInitialized(sensors))
                             break;
                         }
                     case 'sensors:update':
                         dispatch(sensorUpdated({
+                            id: message.payload.id,
+                            changes: message.payload.changes
+                        }))
+                        break;
+                    /**
+                     * @Units 
+                     * */
+                    case 'units:init':
+                        {
+                            const units: Record<string, UnitSettings> = message.payload as unknown as Record<string, UnitSettings>
+                            dispatch(unitsInitialized(units))
+                            break;
+                        }
+                    case 'units:update':
+                        dispatch(unitUpdated({
                             id: message.payload.id,
                             changes: message.payload.changes
                         }))
