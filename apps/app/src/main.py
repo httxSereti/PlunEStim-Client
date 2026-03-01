@@ -3285,7 +3285,28 @@ async def websocket_endpoint(websocket: WebSocket, token: str):
             store.websocket.disconnect(user_id)
 
 
-# bot
+# Testings
+def start_mock_units():
+    while True:
+        tick = random.randint(1, 3)
+
+        for unit_id in threads_settings.keys():
+            ch_A = 20 + random.randint(0, 30)
+            ch_B = 20 + random.randint(0, 30)
+
+            ws_notifier.notify(
+                payload_type="units:update",
+                payload={
+                    "id": unit_id,
+                    "changes": {
+                        "ch_A": ch_A,
+                        "ch_B": ch_B,
+                    },
+                },
+            )
+
+        time.sleep(1)
+
 
 if __name__ == "__main__":
     Logger.info("Starting PlunEStim 1.0.0")
@@ -3314,6 +3335,9 @@ if __name__ == "__main__":
 
     # api
     threads["api"] = Thread(target=start_api)
+
+    # testing
+    threads["testing"] = Thread(target=start_mock_units)
 
     # start all thread
     for tr in threads.keys():
