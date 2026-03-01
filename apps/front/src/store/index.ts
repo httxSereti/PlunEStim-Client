@@ -3,6 +3,7 @@ import authReducer from '@/store/slices/authSlice';
 import websocketReducer from '@/store/slices/websocketSlice';
 import sensorsReducer from '@/store/slices/sensorsSlice';
 import unitsReducer from '@/store/slices/unitsSlice';
+import unitsHistorySlice from '@/store/slices/unitsHistorySlice';
 
 import { createWebSocketMiddleware } from '@/store/middleware/websocketMiddleware';
 
@@ -26,7 +27,8 @@ export const store = configureStore({
         auth: authReducer,
         websocket: websocketReducer,
         sensors: sensorsReducer,
-        units: unitsReducer
+        units: unitsReducer,
+        unitsHistory: unitsHistorySlice
     },
     middleware: (getDefaultMiddleware) =>
         getDefaultMiddleware({

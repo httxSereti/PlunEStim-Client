@@ -1,198 +1,63 @@
-import { useState, type FC } from "react"
-import { zodResolver } from "@hookform/resolvers/zod"
-import { Controller, useForm } from "react-hook-form"
-import { toast } from "sonner"
-import * as z from "zod"
-
+import { type FC } from "react"
 import { Button } from "@pes/ui/components/button"
 import {
     Card,
     CardContent,
-    CardDescription,
-    CardFooter,
     CardHeader,
     CardTitle,
 } from "@pes/ui/components/card"
-import {
-    Field,
-    FieldDescription,
-    FieldError,
-    FieldGroup,
-    FieldLabel,
-} from "@pes/ui/components/field"
-import { Input } from "@pes/ui/components/input"
-import {
-    InputGroup,
-    InputGroupAddon,
-    InputGroupText,
-    InputGroupTextarea,
-} from "@pes/ui/components/input-group"
-import { PlusIcon, MinusIcon } from "lucide-react"
-
-const formSchema = z.object({
-    title: z
-        .string()
-        .min(5, "Bug title must be at least 5 characters.")
-        .max(32, "Bug title must be at most 32 characters."),
-    description: z
-        .string()
-        .min(20, "Description must be at least 20 characters.")
-        .max(100, "Description must be at most 100 characters."),
-    intensity: z
-        .number()
-        .min(0, "Intensity can't be negative")
-        .max(100, "Intensity can't increase more than 100"),
-})
+import { useAppSelector } from "@/store/hooks"
+import { unitsSelectors } from "@/store/slices/unitsSlice"
+import { UnitDropdown } from "@/components/common/units/unit-dropdown"
+import { Computer } from "lucide-react"
+import { UnitGraph } from "@/components/common/units/unit-graph"
 
 type UnitProps = {
-    unitName: string;
+    unitId: string;
 };
 
-export const Unit: FC<UnitProps> = ({ unitName }) => {
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const [intensity, setIntensity] = useState<number>(0);
+export const Unit: FC<UnitProps> = ({ unitId }) => {
+    const unit = useAppSelector(state => unitsSelectors.selectById(state, unitId));
 
-    const form = useForm<z.infer<typeof formSchema>>({
-        resolver: zodResolver(formSchema),
-        defaultValues: {
-            title: "",
-            description: "",
-        },
-    })
-
-    function onSubmit(data: z.infer<typeof formSchema>) {
-        toast("You submitted the following values:", {
-            description: (
-                <pre className="bg-code text-code-foreground mt-2 w-[320px] overflow-x-auto rounded-md p-4">
-                    <code>{JSON.stringify(data, null, 2)}</code>
-                </pre>
-            ),
-            position: "bottom-right",
-            classNames: {
-                content: "flex flex-col gap-2",
-            },
-            style: {
-                "--border-radius": "calc(var(--radius)  + 4px)",
-            } as React.CSSProperties,
-        })
-    }
+    const dotColor =
+        unit?.cnx_ok === true
+            ? "bg-green-500"
+            : "bg-red-500";
 
     return (
-        <Card className="w-full sm:max-w-md">
-            <CardHeader>
-                <CardTitle>{unitName}</CardTitle>
-                <CardDescription>
-                    Help us improve by reporting bugs you encounter.
-                </CardDescription>
-            </CardHeader>
-            <CardContent>
-                <div className="flex justify-center">
-                    <div className="inline-flex h-10 items-center rounded-md border">
-                        <Button variant="ghost" size="icon" className="rounded-none border-r">
-                            <MinusIcon />
-                        </Button>
-                        <Input
-                            id="form-rhf-demo-title"
-                            className="h-full w-14 border-0 text-center focus-visible:ring-0 focus-visible:ring-offset-0"
-                            placeholder="100"
-                            autoComplete="off"
-                            value={intensity}
+        <Card className="">
+            <CardHeader className="flex flex-row justify-between items-center">
+                <CardTitle className="flex gap-2">
+                    <div className="p-2 rounded-lg bg-[#161226] border border-purple-800/40" >
+                        <Computer size={18} className="text-violet-400" />
+                    </div>
+                    <div className="flex flex-col justify-center">
+                        <div className="flex text-sm">
+                            {unit?.id}
+                        </div>
+                    </div>
+                </CardTitle>
+
+                <div className="flex items-center gap-1">
+                    <Button variant="ghost" size="icon" className="h-8 w-8">
+                        <span
+                            className={`h-3 w-3 rounded-full ${dotColor} cursor-pointer hover:opacity-80 transition-opacity`}
                         />
-                        <Button variant="ghost" size="icon" className="rounded-none border-l">
-                            <PlusIcon />
-                        </Button>
+                    </Button>
+
+                    <UnitDropdown unitId={unitId} />
+                </div>
+
+            </CardHeader>
+
+            <CardContent>
+                <div className="flex flex-col gap-5 justify-center">
+                    <UnitGraph unitId={unitId} />
+                    <div className="flex flex-col w-full gap-3.5 px-3 py-3 rounded-lg border border-border/25 bg-muted/10">
+                        <p className="font-mono text-[10px] tracking-widest uppercase text-primary/50">Position</p>
                     </div>
                 </div>
-                <form id="form-rhf-demo" onSubmit={form.handleSubmit(onSubmit)}>
-                    <FieldGroup>
-                        <Controller
-                            name="intensity"
-                            control={form.control}
-                            render={({ field, fieldState }) => (
-                                <Field data-invalid={fieldState.invalid}>
-                                    <FieldLabel htmlFor="form-rhf-demo-title">
-                                        Intensity
-                                    </FieldLabel>
-                                    <Input
-                                        {...field}
-                                        id="form-rhf-demo-title"
-                                        aria-invalid={fieldState.invalid}
-                                        placeholder="Login button not working on mobile"
-                                        autoComplete="off"
-                                    />
-                                    {fieldState.invalid && (
-                                        <FieldError errors={[fieldState.error]} />
-                                    )}
-                                </Field>
-                            )}
-                        />
-                        <Controller
-                            name="title"
-                            control={form.control}
-                            render={({ field, fieldState }) => (
-                                <Field data-invalid={fieldState.invalid}>
-                                    <FieldLabel htmlFor="form-rhf-demo-title">
-                                        Bug Title
-                                    </FieldLabel>
-                                    <Input
-                                        {...field}
-                                        id="form-rhf-demo-title"
-                                        aria-invalid={fieldState.invalid}
-                                        placeholder="Login button not working on mobile"
-                                        autoComplete="off"
-                                    />
-                                    {fieldState.invalid && (
-                                        <FieldError errors={[fieldState.error]} />
-                                    )}
-                                </Field>
-                            )}
-                        />
-                        <Controller
-                            name="description"
-                            control={form.control}
-                            render={({ field, fieldState }) => (
-                                <Field data-invalid={fieldState.invalid}>
-                                    <FieldLabel htmlFor="form-rhf-demo-description">
-                                        Description
-                                    </FieldLabel>
-                                    <InputGroup>
-                                        <InputGroupTextarea
-                                            {...field}
-                                            id="form-rhf-demo-description"
-                                            placeholder="I'm having an issue with the login button on mobile."
-                                            rows={6}
-                                            className="min-h-24 resize-none"
-                                            aria-invalid={fieldState.invalid}
-                                        />
-                                        <InputGroupAddon align="block-end">
-                                            <InputGroupText className="tabular-nums">
-                                                {field.value.length}/100 characters
-                                            </InputGroupText>
-                                        </InputGroupAddon>
-                                    </InputGroup>
-                                    <FieldDescription>
-                                        Include steps to reproduce, expected behavior, and what
-                                        actually happened.
-                                    </FieldDescription>
-                                    {fieldState.invalid && (
-                                        <FieldError errors={[fieldState.error]} />
-                                    )}
-                                </Field>
-                            )}
-                        />
-                    </FieldGroup>
-                </form>
             </CardContent>
-            <CardFooter>
-                <Field orientation="horizontal">
-                    <Button type="button" variant="outline" onClick={() => form.reset()}>
-                        Reset
-                    </Button>
-                    <Button type="submit" form="form-rhf-demo">
-                        Submit
-                    </Button>
-                </Field>
-            </CardFooter>
         </Card>
     )
 }
