@@ -1,3 +1,4 @@
+import os
 from fastapi import APIRouter, HTTPException, status, Depends
 from cuid2 import Cuid
 
@@ -11,6 +12,7 @@ from api.helpers import (
     get_current_user,
 )
 
+FRONT_URL: str = os.getenv("FRONT_URL")
 CUID_GENERATOR: Cuid = Cuid(length=7)
 
 router = APIRouter(prefix="/admin", tags=["admin"])
@@ -47,7 +49,7 @@ async def generate_magic_link(
     )
 
     store.add_user(user)
-    
-    magic_link = f"http://localhost:5173/auth?magic_token={magic_token}"
+
+    magic_link = f"{FRONT_URL}/auth?magic_token={magic_token}"
 
     return {"magic_link": magic_link}
