@@ -16,15 +16,13 @@ class HelpCommand(Cog):
 
     @slash_command(description="Show Help")
     async def help(self, interaction: Interaction):
-        pprint(list(TriggerableEvent))
+        # pprint(list(TriggerableEvent))
 
         ws_notifier.notify("notification", {"help": "OK"})
 
-        # await self.bot.add_event_action(
-        #     'pilloryvote',
-        #     'pillory_chaster' + '_' + "lucie",
-        #     time.localtime()
-        # )
+        await self.bot.add_event_action(
+            "chaster_pillory_vote", "pillory_chaster" + "_" + "lucie", time.localtime()
+        )
 
         await interaction.send(f"Pong! {self.bot.latency * 1000:.2f}ms")
 

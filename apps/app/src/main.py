@@ -2004,8 +2004,6 @@ class Bot2b3(NextcordBot):
     async def add_event_action(
         self, type_action: str, origin_action: str, event_time
     ) -> None:
-        # TODO: REF everything
-
         Logger.info(f"Action received! {type_action}")
         # action parsed in the event
 
@@ -2183,35 +2181,47 @@ class Bot2b3(NextcordBot):
         """
 
         if action["type"] == "lvl":
-            unit = action["unit"]
+            unit = UnitDict(action["unit"])
             var = action["dest"]
-            new_val = threads_settings[unit][var] + action["level_diff"]
-            new_val = max(0, min(100, new_val))  # to avoid special case (or bug) ...
-            Logger.info(
-                f"return to initial value for unit {unit} var {var} is {new_val}"
-            )
-            threads_settings[unit]["updated"] = True
-            threads_settings[unit][var] = new_val
+            snapshot = store.get_unit_dict(unit)
 
-            Logger.info(f"[Action] Successfully back to initial Levels.")
+            new_val = max(0, min(100, snapshot[var] + action["level_diff"]))
+
+            Logger.info(
+                f"Return to initial value for unit {action['unit']} var {var} is {new_val}"
+            )
+
+            store.update_unit_dict(
+                unit,
+                {
+                    "updated": True,
+                    var: new_val,
+                },
+            )
+
+            Logger.info("[Action] Successfully reversed to initial Levels.")
 
         elif action["type"] == "pro":
-            file_bck = open(DIR_TMP / action["bck_file"], "r")
-            backup_data = json.load(file_bck)
-            bck_settings = backup_data["threads_settings"]
-            file_bck.close()
-            os.remove(DIR_TMP / action["bck_file"])
-            # apply old profile
-            for bck_bt_name in bck_settings:
-                threads_settings[bck_bt_name]["sync"] = False
-                threads_settings[bck_bt_name]["updated"] = True
-                for field in bck_settings[bck_bt_name]:
-                    if field in PROFILE_FIELDS:
-                        threads_settings[bck_bt_name][field] = bck_settings[
-                            bck_bt_name
-                        ][field]
+            with open(DIR_TMP / action["bck_file"], "r") as f:
+                backup_data = json.load(f)
 
-            Logger.info(f"[Action] Successfully back to initial Profile.")
+            bck_settings = backup_data["threads_settings"]
+            os.remove(DIR_TMP / action["bck_file"])
+
+            for bck_bt_name, bck_unit in bck_settings.items():
+                unit = UnitDict(bck_bt_name)
+
+                changes = {
+                    field: value
+                    for field, value in bck_unit.items()
+                    if field in PROFILE_FIELDS
+                }
+
+                if changes:
+                    changes.update({"sync": False, "updated": True})
+                    store.update_unit_dict(unit, changes)
+
+            Logger.info("[Action] Successfully reversed to initial Profile.")
 
     async def apply_action(self, action: dict) -> None:
         # TODO: REF everything
@@ -2223,80 +2233,84 @@ class Bot2b3(NextcordBot):
         Returns: None
 
         """
-        # pprint(action)
-        # pprint(threads_settings)
-        Logger.info("{} action start\n".format(action["origine"]))
+        Logger.info("{} Action start\n".format(action["origine"]))
         # Level update
         if action["type"] == "lvl":
-            for unit in await self.check_unit(None, action["unit"]):
-                unit = "UNIT" + str(unit)
-                # level adjust
+            for unit_num in await self.check_unit(None, action["unit"]):
+                unit_str = f"UNIT{unit_num}"
+                unit = UnitDict(unit_str)
+                snapshot = store.get_unit_dict(unit)
+                changes = {}
+
                 for ch in await self.check_ch(None, action["dest"].upper()):
                     ch_name = f"ch_{ch}_max"
-                    old_val = threads_settings[unit][ch_name]
-                    new_val = self.calc_new_val(action["level"], unit, ch_name)
-                    threads_settings[unit]["updated"] = True
-                    threads_settings[unit][ch_name] = new_val
+                    old_val = snapshot[ch_name]
+                    new_val = self.calc_new_val(action["level"], unit_str, ch_name)
+
+                    changes[ch_name] = new_val
                     self.back_action_queue.append(
                         {
                             "type": action["type"],
-                            "unit": unit,
+                            "unit": unit_str,
                             "dest": ch_name,
                             "level_diff": old_val - new_val,
                             "origine": action["origine"],
                         }
                     )
+
                     Logger.info(
-                        "[Action] level for {} {} -> {}".format(
-                            threads_settings[unit][f"ch_{ch}_use"], old_val, new_val
-                        )
+                        f"[Action] level for {snapshot[f'ch_{ch}_use']} {old_val} -> {new_val}"
                     )
 
+                if changes:
+                    changes["updated"] = True
+                    store.update_unit_dict(unit, changes)
         # profile update
         elif action["type"] == "pro":
             if action["profile"] == "X":
                 action["profile"] = random.choice(PROFILE_RANDOM)
+
             filename = action["profile"] + ".json"
-            if not os.path.isfile(DIR_PROFILE / filename):
-                Logger.info("Profile file {} missing".format(DIR_PROFILE / filename))
-            else:
-                # backup current profile
-                file_bck = open(DIR_TMP / action["origine"], "w")
-                backup_data = {"threads_settings": threads_settings}
-                json.dump(backup_data, file_bck, indent=4)
-                file_bck.close()
-                self.back_action_queue.append(
-                    {
-                        "type": action["type"],
-                        "bck_file": action["origine"],
-                        "origine": action["origine"],
-                    }
+            profile_path = DIR_PROFILE / filename
+
+            if not os.path.isfile(profile_path):
+                Logger.info(f"Profile file {profile_path} missing")
+                return
+
+            # backup current profile
+            with open(DIR_TMP / action["origine"], "w") as f:
+                json.dump(
+                    {"threads_settings": store.get_all_units_settings()}, f, indent=4
                 )
-                # load new profile
-                file_profile = open(DIR_PROFILE / filename, "r")
-                backup_data = json.load(file_profile)
-                bck_settings = backup_data["threads_settings"]
-                file_profile.close()
-                # apply new profile
-                for bck_bt_name in bck_settings:
-                    threads_settings[bck_bt_name]["sync"] = False
-                    threads_settings[bck_bt_name]["updated"] = True
-                    threads_settings[bck_bt_name]["ramp_progress"] = 0
-                    for field in bck_settings[bck_bt_name]:
-                        if field in PROFILE_FIELDS:
-                            if field in ["ch_A_max", "ch_B_max"]:
-                                new_val = round(
-                                    int(bck_settings[bck_bt_name][field])
-                                    * int(action["level"])
-                                    / 100
-                                )
-                                threads_settings[bck_bt_name][field] = min(
-                                    100, max(0, new_val)
-                                )
-                            else:
-                                threads_settings[bck_bt_name][field] = bck_settings[
-                                    bck_bt_name
-                                ][field]
+
+            self.back_action_queue.append(
+                {
+                    "type": action["type"],
+                    "bck_file": action["origine"],
+                    "origine": action["origine"],
+                }
+            )
+
+            # load + apply new profile
+            with open(profile_path, "r") as f:
+                profile_data = json.load(f)
+
+            bck_settings = profile_data["threads_settings"]
+
+            for bck_bt_name, bck_unit in bck_settings.items():
+                unit = UnitDict(bck_bt_name)
+                changes = {"sync": False, "updated": True, "ramp_progress": 0}
+
+                for field, value in bck_unit.items():
+                    if field not in PROFILE_FIELDS:
+                        continue
+                    if field in ("ch_A_max", "ch_B_max"):
+                        new_val = round(int(value) * int(action["level"]) / 100)
+                        changes[field] = min(100, max(0, new_val))
+                    else:
+                        changes[field] = value
+
+                store.update_unit_dict(unit, changes)
 
     # BT sensors polling for new alarm
     async def bt_sensor_alarm(self):
