@@ -111,31 +111,25 @@ class Store:
 
     def get_unit_setting(self, unit_dict: UnitDict, key: str, default=None):
         with self._units_lock:
-            dict_name = unit_dict.value
-            if dict_name not in self._units_settings:
-                return default
-            return self._units_settings[dict_name].get(key, default)
+            return self._units_settings.get(unit_dict.value, {}).get(key, default)
 
     def set_unit_setting(self, unit_dict: UnitDict, key: str, value):
         with self._units_lock:
-            dict_name = unit_dict.value
-            if dict_name not in self._units_settings:
-                raise KeyError(f"Dictionary '{dict_name}' doesn't exist")
-            self._units_settings[dict_name][key] = value
+            unit_id = unit_dict.value
+            if unit_id not in self._units_settings:
+                raise KeyError(f"Unit '{unit_id}' doesn't exist")
+            self._units_settings[unit_id][key] = value
+
+    def update_unit_dict(self, unit_dict: UnitDict, changes: Dict):
+        with self._units_lock:
+            unit_id = unit_dict.value
+            if unit_id not in self._units_settings:
+                raise KeyError(f"Unit '{unit_id}' doesn't exist")
+            self._units_settings[unit_id].update(changes)
 
     def get_unit_dict(self, unit_dict: UnitDict) -> Dict:
         with self._units_lock:
-            dict_name = unit_dict.value
-            if dict_name not in self._units_settings:
-                return {}
-            return self._units_settings[dict_name].copy()
-
-    def update_unit_dict(self, unit_dict: UnitDict, settings: Dict):
-        with self._units_lock:
-            dict_name = unit_dict.value
-            if dict_name not in self._units_settings:
-                raise KeyError(f"Dictionary '{dict_name}' doesn't exist")
-            self._units_settings[dict_name].update(settings)
+            return self._units_settings.get(unit_dict.value, {}).copy()
 
     def get_all_units_settings(self) -> Dict[str, Dict]:
         with self._units_lock:
@@ -143,6 +137,19 @@ class Store:
                 name: dict_content.copy()
                 for name, dict_content in self._units_settings.items()
             }
+
+    def consume_unit_update(self, unit_dict: UnitDict) -> Optional[Dict]:
+        """
+        if unit updated=True,reset updated flag and return copied unit data
+        else return None
+        """
+        with self._units_lock:
+            unit_id = unit_dict.value
+            unit = self._units_settings.get(unit_id)
+            if unit and unit.get("updated"):
+                unit["updated"] = False
+                return unit.copy()
+            return None
 
     def clear_unit_dict(self, unit_dict: UnitDict):
         with self._units_lock:
