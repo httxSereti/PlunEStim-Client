@@ -1,3 +1,4 @@
+from utils import Logger
 from store import Store
 from api.ws.websocket_notifier import WebSocketNotifier
 from typings import UnitDict
@@ -24,6 +25,9 @@ async def handle_stop(_payload: dict, ws_notifier: WebSocketNotifier) -> dict:
                 "ch_B_max": 0,
             },
         )
+
+    # log
+    Logger.info("[WS|core:stop] Stopped every units & action queue")
 
     ws_notifier.notify(
         "core:stop", {"status": "ok", "message": "%SYSTEM% shutdown all devices."}

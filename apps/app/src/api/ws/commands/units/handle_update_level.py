@@ -6,7 +6,7 @@ from typings import UnitDict
 store = Store()
 
 
-async def handle_level_update(payload: dict, ws_notifier: WebSocketNotifier) -> dict:
+async def handle_update_level(payload: dict, ws_notifier: WebSocketNotifier) -> dict:
     """
     Update the intensity level of one or more Units using "magic number" number with random and operators
     """
@@ -25,8 +25,7 @@ async def handle_level_update(payload: dict, ws_notifier: WebSocketNotifier) -> 
                 )
 
                 Logger.info(
-                    f"[WS:units] Adjust {unit_id}@'{field}' from "
-                    f"'{snapshot[field]}' to '{new_value}' with '{field_value}'"
+                    f"WS|units:update_level] Adjust {unit_id}@'{field}' from '{snapshot[field]}' to '{new_value}' with '{field_value}'"
                 )
                 changes[field + "_max"] = new_value
 

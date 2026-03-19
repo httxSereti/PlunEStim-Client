@@ -24,7 +24,7 @@ export const UnitQuickLevel: FC<UnitQuickLevelProps> = ({ unitId, selectedChanne
 
         try {
 
-            await sendCommand('units:level_update', {
+            await sendCommand('units:update_level', {
                 [unitId]: {
                     [propertyKey]: operators,
                 },

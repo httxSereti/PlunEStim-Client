@@ -62,7 +62,12 @@ from contextlib import asynccontextmanager
 from api.ws.websocket_notifier import ws_notifier
 from api.rest import users, auth, admin
 
-from api.ws.commands import handle_stop, handle_sensors_update, handle_level_update
+from api.ws.commands import (
+    handle_stop,
+    handle_sensors_update,
+    handle_update_level,
+    handle_update_mode,
+)
 
 # load env
 dotenv.load_dotenv("config.env")
@@ -3200,8 +3205,8 @@ async def units():
 HANDLERS = {
     "core:stop": (handle_stop, Permission.WRITE_UNITS),
     "sensors:update": (handle_sensors_update, Permission.WRITE_SENSORS),
-    "units:level_update": (handle_level_update, Permission.WRITE_UNITS),
-    # "units:update_mode":  (handle_mode_update,  Permission.WRITE_UNITS),
+    "units:update_level": (handle_update_level, Permission.WRITE_UNITS),
+    "units:update_mode": (handle_update_mode, Permission.WRITE_UNITS),
 }
 
 
@@ -3293,73 +3298,7 @@ async def websocket_endpoint(websocket: WebSocket, token: str):
                         )
 
                 # old system
-                if msg_type == "units:update_mode":
-                    if store.check_permission(user_id, Permission.WRITE_UNITS):
-                        # loop over units
-                        for unit_id, unit_changes in msg_payload.items():
-                            new_mode = unit_changes.get("mode")
-
-                            # if we're changing mode and is a 2B mode (0-16)
-                            if new_mode is None or not (0 <= new_mode < len(MODE_2B)):
-                                continue
-
-                            unit = UnitDict(unit_id)
-                            snapshot = store.get_unit_dict(unit)
-
-                            Logger.info(
-                                f"[WS:units] Updated mode for {unit_id} from '{snapshot['mode']}' to '{new_mode}'"
-                            )
-
-                            changes = {
-                                "updated": True,
-                                "mode": new_mode,
-                                "ch_A": 0,
-                                "ch_A_max": 0,
-                                "ch_B": 0,
-                                "ch_B_max": 0,
-                            }
-
-                            # reset adj_2 for mode without adj2
-                            if MODE_2B[new_mode]["adj_2"] == "":
-                                changes["adj_2"] = snapshot["adj_1"]
-
-                            # save changes
-                            store.update_unit_dict(unit, changes)
-
-                            ws_notifier.notify(
-                                "units:update",
-                                {
-                                    "id": unit_id,
-                                    "changes": {
-                                        "mode": new_mode,
-                                        "ch_A": 0,
-                                        "ch_A_max": 0,
-                                        "ch_B": 0,
-                                        "ch_B_max": 0,
-                                    },
-                                },
-                            )
-
-                        # resolve command
-                        await websocket.send_json(
-                            {
-                                "type": "command",
-                                "payload": {"status": "ok"},
-                                "id": msg_id,
-                            }
-                        )
-                    else:
-                        await websocket.send_json(
-                            {
-                                "type": "command",
-                                "payload": {
-                                    "status": "error",
-                                    "message": "Missing permission: WRITE_UNITS",
-                                },
-                                "id": msg_id,
-                            }
-                        )
-                elif msg_type == "get:notifications":
+                if msg_type == "get:notifications":
                     # Handle client messages (e.g., commands)
                     print(f"🔔 Get notifications - ID: {msg_id}")
 
