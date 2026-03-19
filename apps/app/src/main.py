@@ -62,7 +62,7 @@ from contextlib import asynccontextmanager
 from api.ws.websocket_notifier import ws_notifier
 from api.rest import users, auth, admin
 
-from api.ws.commands import handle_stop, handle_sensors_update
+from api.ws.commands import handle_stop, handle_sensors_update, handle_level_update
 
 # load env
 dotenv.load_dotenv("config.env")
@@ -3200,7 +3200,7 @@ async def units():
 HANDLERS = {
     "core:stop": (handle_stop, Permission.WRITE_UNITS),
     "sensors:update": (handle_sensors_update, Permission.WRITE_SENSORS),
-    # "units:level_update": (handle_level_update, Permission.WRITE_UNITS),
+    "units:level_update": (handle_level_update, Permission.WRITE_UNITS),
     # "units:update_mode":  (handle_mode_update,  Permission.WRITE_UNITS),
 }
 
@@ -3293,56 +3293,7 @@ async def websocket_endpoint(websocket: WebSocket, token: str):
                         )
 
                 # old system
-                if msg_type == "units:level_update":
-                    if store.check_permission(user_id, Permission.WRITE_UNITS):
-                        # loop over units, then changes
-                        for unit_id, unit_changes in msg_payload.items():
-                            unit = UnitDict(unit_id)
-                            snapshot = store.get_unit_dict(unit)
-                            changes = {}
-
-                            for field, field_value in unit_changes.items():
-                                if field == "ch_A" or field == "ch_B":
-                                    # calc new value using lexer for operators
-                                    new_value = calculate_magic_number(
-                                        snapshot[field + "_max"], str(field_value)
-                                    )
-
-                                    Logger.info(
-                                        f"[WS:units] Adjust {unit_id}@'{field}' from "
-                                        f"'{snapshot[field]}' to '{new_value}' with '{field_value}'"
-                                    )
-                                    changes[field + "_max"] = new_value
-                            # updated
-                            if changes:
-                                changes["updated"] = True
-                                store.update_unit_dict(unit, changes)
-
-                                ws_notifier.notify(
-                                    "units:update",
-                                    {"id": unit_id, "changes": changes},
-                                )
-
-                        # resolve command
-                        await websocket.send_json(
-                            {
-                                "type": "command",
-                                "payload": {"status": "ok"},
-                                "id": msg_id,
-                            }
-                        )
-                    else:
-                        await websocket.send_json(
-                            {
-                                "type": "command",
-                                "payload": {
-                                    "status": "error",
-                                    "message": "Missing permission: WRITE_UNITS",
-                                },
-                                "id": msg_id,
-                            }
-                        )
-                elif msg_type == "units:update_mode":
+                if msg_type == "units:update_mode":
                     if store.check_permission(user_id, Permission.WRITE_UNITS):
                         # loop over units
                         for unit_id, unit_changes in msg_payload.items():
