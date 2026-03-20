@@ -43,10 +43,7 @@ from nextcord.ext import tasks
 
 from pprint import pprint
 
-from constants import DISCORD_GUILD_IDS, BT_UNITS
-
-from profiles import ProfileModule
-
+from constants import DISCORD_GUILD_IDS, BT_UNITS, MODE_2B
 
 from typings import *
 from typings import Permission, UnitDict
@@ -133,27 +130,6 @@ BOT_MSG_LEVEL = logging.WARNING
 
 # Others REGEX
 REGEX_LEVEL_FORMAT = r"(%*[\\+,-]*)([1-9]*\d)$"
-
-# 2B mode description
-MODE_2B = (
-    {"id": "pulse", "adj_1": "rate", "adj_2": "feel"},
-    {"id": "bounce", "adj_1": "rate", "adj_2": "feel"},
-    {"id": "continuous", "adj_1": "feel", "adj_2": ""},
-    {"id": "flo", "adj_1": "rate", "adj_2": "feel"},
-    {"id": "asplit", "adj_1": "rate", "adj_2": "feel"},
-    {"id": "bsplit", "adj_1": "rate", "adj_2": "feel"},
-    {"id": "wave", "adj_1": "flow", "adj_2": "steep"},
-    {"id": "waterfall", "adj_1": "flow", "adj_2": "steep"},
-    {"id": "squeeze", "adj_1": "rate", "adj_2": "feel"},
-    {"id": "milk", "adj_1": "rate", "adj_2": "feel"},
-    {"id": "throb", "adj_1": "low", "adj_2": "high"},
-    {"id": "thrust", "adj_1": "low", "adj_2": "high"},
-    {"id": "cycle", "adj_1": "low", "adj_2": "high"},
-    {"id": "twist", "adj_1": "low", "adj_2": "high"},
-    {"id": "random", "adj_1": "range", "adj_2": "feel"},
-    {"id": "step", "adj_1": "steep", "adj_2": "feel"},
-    {"id": "training", "adj_1": "steep", "adj_2": "feel"},
-)
 
 # Values for arguments checking about power and timing
 CHECK_ARG = {
@@ -3296,33 +3272,6 @@ async def websocket_endpoint(websocket: WebSocket, token: str):
                                 },
                             }
                         )
-
-                # old system
-                if msg_type == "get:notifications":
-                    # Handle client messages (e.g., commands)
-                    print(f"🔔 Get notifications - ID: {msg_id}")
-
-                    # Récupérer les notifications
-                    notifications = [
-                        {"id": 1, "message": "Test notification 1"},
-                        {"id": 2, "message": "Test notification 2"},
-                    ]
-
-                    # IMPORTANT : Renvoyer avec l'ID
-                    response = {
-                        "type": "get:notifications",
-                        "payload": notifications,
-                        "id": msg_id,  # ← CRUCIAL
-                    }
-
-                    print(f"📤 Sending: {json.dumps(response)}")
-                    await websocket.send_json(response)
-                else:
-                    """
-                        Message not supported
-                    """
-                    print(f"⚠️ Unknown message type: {msg_type}")
-
             except asyncio.TimeoutError:
                 print("💓 Sending heartbeat ping")
                 await websocket.send_json({"type": "ping"})
@@ -3398,10 +3347,6 @@ if __name__ == "__main__":
 
     threads = {}
 
-    # Profiles Module
-    profile = ProfileModule()
-    profile.loadProfiles()
-
     # init thread for BT sensors
     if ENABLE_BT_SENSORS:
         for name, addr, service in BT_SENSORS:
@@ -3420,7 +3365,7 @@ if __name__ == "__main__":
     threads["api"] = Thread(target=start_api)
 
     # testing
-    threads["testing"] = Thread(target=start_mock_units)
+    # threads["testing"] = Thread(target=start_mock_units)
 
     # start all thread
     for tr in threads.keys():
