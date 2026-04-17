@@ -43,22 +43,30 @@ from nextcord.ext import tasks
 
 from pprint import pprint
 
-from constants import DISCORD_GUILD_IDS
-
-from profiles import ProfileModule
+from constants import DISCORD_GUILD_IDS, BT_UNITS, MODE_2B
 
 from typings import *
-from typings import Permission
+from typings import Permission, UnitDict
 from services.chaster import *
 from services.notifier import *
+from utils import Logger, calculate_magic_number
 from utils import *
 
 from store import Store
-from models.User import User
-
 from utils.users.generate_root_access import generate_root_access
 
+from contextlib import asynccontextmanager
+from api.ws.websocket_notifier import ws_notifier
 from api.rest import users, auth, admin
+
+from api.ws.commands import (
+    handle_stop,
+    handle_sensors_update,
+    handle_update_level,
+    handle_update_mode,
+    handle_update_adj,
+    handle_update_power_mode,
+)
 
 # load env
 dotenv.load_dotenv("config.env")
@@ -91,7 +99,6 @@ SERIAL_BAUDRATE = 9600
 SERIAL_RETRY = 5
 SERIAL_TIMEOUT = 2
 SERIAL_KEEPALIVE = 20  # check every x second the connexion (100 ms steps)
-BT_UNITS = ("UNIT1", "UNIT2", "UNIT3")
 
 # Bot config
 DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
@@ -125,27 +132,6 @@ BOT_MSG_LEVEL = logging.WARNING
 
 # Others REGEX
 REGEX_LEVEL_FORMAT = r"(%*[\\+,-]*)([1-9]*\d)$"
-
-# 2B mode description
-MODE_2B = (
-    {"id": "pulse", "adj_1": "rate", "adj_2": "feel"},
-    {"id": "bounce", "adj_1": "rate", "adj_2": "feel"},
-    {"id": "continuous", "adj_1": "feel", "adj_2": ""},
-    {"id": "flo", "adj_1": "rate", "adj_2": "feel"},
-    {"id": "asplit", "adj_1": "rate", "adj_2": "feel"},
-    {"id": "bsplit", "adj_1": "rate", "adj_2": "feel"},
-    {"id": "wave", "adj_1": "flow", "adj_2": "steep"},
-    {"id": "waterfall", "adj_1": "flow", "adj_2": "steep"},
-    {"id": "squeeze", "adj_1": "rate", "adj_2": "feel"},
-    {"id": "milk", "adj_1": "rate", "adj_2": "feel"},
-    {"id": "throb", "adj_1": "low", "adj_2": "high"},
-    {"id": "thrust", "adj_1": "low", "adj_2": "high"},
-    {"id": "cycle", "adj_1": "low", "adj_2": "high"},
-    {"id": "twist", "adj_1": "low", "adj_2": "high"},
-    {"id": "random", "adj_1": "range", "adj_2": "feel"},
-    {"id": "step", "adj_1": "steep", "adj_2": "feel"},
-    {"id": "training", "adj_1": "steep", "adj_2": "feel"},
-)
 
 # Values for arguments checking about power and timing
 CHECK_ARG = {
@@ -206,7 +192,7 @@ logger = logging.getLogger()
 
 
 # filter
-def filter_logger(record):
+def filter_Logger(record):
     # if record.module == 'proactor_events':
     #   return False
     return True
@@ -226,19 +212,19 @@ console.setLevel(logging.INFO)
 console.setFormatter(
     logging.Formatter("[%(asctime)s] %(threadName)s %(module)s %(message)s")
 )
-console.addFilter(filter_logger)
+console.addFilter(filter_Logger)
 logger.addHandler(console)
 # Discord Log
 # debug
-logger_nextcord = logging.getLogger("nextcord")
-logger_nextcord.setLevel(logging.INFO)
+Logger_nextcord = logging.getLogger("nextcord")
+Logger_nextcord.setLevel(logging.INFO)
 handler_nextcord = logging.FileHandler(
     filename="nextcord.log", encoding="utf-8", mode="w"
 )
 handler_nextcord.setFormatter(
     logging.Formatter("[%(asctime)s]%(levelname)s:%(name)s: %(message)s")
 )
-logger_nextcord.addHandler(handler_nextcord)
+Logger_nextcord.addHandler(handler_nextcord)
 
 # init Store
 store = Store()
@@ -250,7 +236,18 @@ store = Store()
 SECRET_KEY = os.getenv("JWT_SECRET_KEY")
 ALGORITHM = "HS256"
 
-app = FastAPI()
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # startup
+    loop = asyncio.get_event_loop()
+    ws_notifier.setup(loop)
+    asyncio.create_task(ws_notifier.consume(store.websocket))
+    yield
+    # shutdown
+
+
+app = FastAPI(lifespan=lifespan)
 
 app.include_router(users.router)
 app.include_router(auth.router)
@@ -265,6 +262,7 @@ app.add_middleware(
 )
 
 # init multi threading
+# global threads_settings
 threads_settings = {}
 
 # Slash_Command constantes
@@ -424,7 +422,7 @@ class UnitConnect:
         """
         reply = reply_raw.decode().rstrip("\r\n")
 
-        logger.debug("{} 2B reply : {}".format(self.name, reply))
+        Logger.debug("{} 2B reply : {}".format(self.name, reply))
 
         if m := re.match(
             r"^(\d+):(\d+):(\d+):(\d+):(\d+):(\d+):([L,H]):(\d+):(\d+):(\d+):(\d+):(\d+):(2\..+)$",
@@ -442,8 +440,14 @@ class UnitConnect:
             self.settings_return["level_map"] = int(m[10])
             self.settings_return["adj_4"] = int(m[11])
             self.settings_return["adj_3"] = int(m[12])
+
+            # ws_notifier.notify(
+            #     "units:update",
+            #     {self.name: {**self.settings_return}},
+            # )
+
             return str(m[13])  # return firmware version
-        logger.info(
+        Logger.info(
             "Fail to parse the 2B {} reply {} -> reconnecting".format(self.name, reply)
         )
         self.detect()
@@ -459,14 +463,14 @@ class UnitConnect:
         # close previous open (lost connexion)
         if self.serial_dev:
             if self.serial_dev.isOpen():
-                logger.debug("{} close serial port".format(self.name))
+                Logger.debug("{} close serial port".format(self.name))
                 self.serial_dev.close()
             else:
-                logger.debug("{} port already close".format(self.name))
+                Logger.debug("{} port already close".format(self.name))
 
         # loop for BT serial connexion until succes
         while True:
-            logger.debug("{} BTscan for devices".format(self.name))
+            Logger.info("{} BTscan for devices".format(self.name))
             nearby_devices = bluetooth.discover_devices(
                 duration=1, lookup_names=True, flush_cache=True, lookup_class=False
             )
@@ -476,13 +480,13 @@ class UnitConnect:
             # Loop on BT device to find the good one
             for addr, name in nearby_devices:
                 if self.name == name:
-                    logger.debug("{} detected in {}".format(self.name, addr))
+                    Logger.debug("{} detected in {}".format(self.name, addr))
                     com_ports = list(serial.tools.list_ports.comports())
                     addr = addr.replace(":", "")
                     # Find the associated COM port
                     for com, des, hwenu in com_ports:
                         if addr in hwenu:
-                            logger.debug(
+                            Logger.debug(
                                 "{} serial port detected {}".format(self.name, com)
                             )
                             for retry in range(1, SERIAL_RETRY):
@@ -496,7 +500,7 @@ class UnitConnect:
                                         stopbits=serial.STOPBITS_ONE,
                                     )
                                 except serial.SerialException:
-                                    logger.debug(
+                                    Logger.debug(
                                         "{} serial retry open {}".format(
                                             self.name, retry
                                         )
@@ -508,19 +512,19 @@ class UnitConnect:
                                         self.serial_dev.readline()
                                     )
                                     if firmware_version is not None:
-                                        logger.info(
+                                        Logger.info(
                                             f"{self.name} serial access to 2B is OK"
                                         )
-                                        logger.debug(
+                                        Logger.debug(
                                             f"{self.name} version={firmware_version}"
                                         )
                                         self.settings_target["cnx_ok"] = True
                                         return self.serial_dev
-                                    logger.info(
+                                    Logger.info(
                                         "{} 2B not responding".format(self.name)
                                     )
                                     self.serial_dev.close()
-                                    logger.debug(
+                                    Logger.debug(
                                         "{} serial retry open {}".format(
                                             self.name, retry
                                         )
@@ -554,18 +558,22 @@ class UnitConnect:
         self.serial_dev.write(b"\n\r")
         self.parse_reply(self.serial_dev.readline())
         no_updated = True
+        updated_fields: dict = {}
+
         # loop on all 2B settings (the order is important)
         for field in FW_2B_CMD.keys():
             # check if update is needed
             if self.settings_return[field] != self.settings_target[field]:
-                logger.debug(
-                    "{} adjust {} {} -> {}".format(
+                Logger.info(
+                    "[{}] Adjust '{}' {} -> {}".format(
                         self.name,
                         field,
                         self.settings_return[field],
                         self.settings_target[field],
                     )
                 )
+
+                updated_fields[field] = self.settings_target[field]
                 # the update command can be fixed value or an argument
                 if len(FW_2B_CMD[field]) == 1:
                     cmd = "{}{}".format(FW_2B_CMD[field], self.settings_target[field])
@@ -573,7 +581,7 @@ class UnitConnect:
                     cmd = FW_2B_CMD[field].split("-")[int(self.settings_target[field])]
                 # if something to do
                 if cmd != "":
-                    logger.debug("{} cmd {}".format(self.name, cmd))
+                    Logger.debug("{} cmd {}".format(self.name, cmd))
                     # check if target and 2B synchronized on the next call
                     self.settings_target["sync"] = False
                     no_updated = False
@@ -581,37 +589,47 @@ class UnitConnect:
         # if no change it is synchronized !
         if no_updated:
             self.settings_target["sync"] = True
+        else:
+            ws_notifier.notify(
+                "units:update",
+                {"id": self.name, "changes": updated_fields},
+            )
+
         return no_updated
 
 
-def thread_bt_unit(unit: str, settings: dict) -> None:
+def thread_bt_unit(unit_str: str) -> None:
     """
     Manage on 2B unit, this function must run inside a thread
     Args:
         unit: name of the 2B unit like UNITx
-        settings: dict with the target settings for this unit
 
     Returns:
     """
+    unit = UnitDict(unit_str)
 
     while True:
         try:
             # create bt object inside a thread
-            bt = UnitConnect(unit, threads_settings[unit])
+            bt = UnitConnect(unit_str, store.get_unit_dict(unit))
 
             cycle = 0  # for the keepalive
             while True:
+                # fetch unit data with lock and make set it as updated
+                snapshot = store.consume_unit_update(unit)
+
                 # if new values are waiting
-                if settings["updated"]:
-                    # the 2BT is not in sync if new value wait
-                    settings["sync"] = False
-                    # reset the updated state
-                    settings["updated"] = False
+                if snapshot:
+                    # set 2B to synced
+                    store.set_unit_setting(unit, "sync", False)
+
                     # Set the target with the new values
                     for setting in FW_2B_CMD.keys():
-                        bt.settings_target[setting] = settings[setting]
+                        bt.settings_target[setting] = snapshot[setting]
+
                     bt.check_2b_settings()
                     cycle = 0  # reset keepalive
+
                 elif cycle > SERIAL_KEEPALIVE:
                     # check connection state
                     bt.check_2b_settings()
@@ -620,7 +638,9 @@ def thread_bt_unit(unit: str, settings: dict) -> None:
                     time.sleep(0.1)
                     cycle = cycle + 1
         except Exception as err:
-            logger.info(f"Thread error with estim unit {unit} : {err=}, {type(err)=}")
+            Logger.info(
+                f"[BTUnit] Thread error with estim unit {unit_str} : {err=}, {type(err)=}"
+            )
             time.sleep(30)
 
 
@@ -664,31 +684,27 @@ class Bot2b3(NextcordBot):
         Returns:
             the new value
         """
+        current = store.get_unit_setting(UnitDict(unit), val, default=0)
+
         if match := re.match(REGEX_LEVEL_FORMAT, newval):
             if match.group(1) == "+":
-                new_val = min(threads_settings[unit][val] + int(match.group(2)), 99)
+                new_val = min(current + int(match.group(2)), 99)
             elif match.group(1) == "-":
-                new_val = max(threads_settings[unit][val] - int(match.group(2)), 0)
+                new_val = max(current - int(match.group(2)), 0)
             elif match.group(1) == "%+":
                 new_val = min(
-                    threads_settings[unit][val]
-                    + math.ceil(
-                        threads_settings[unit][val] * int(match.group(2)) / 100
-                    ),
+                    current + math.ceil(current * int(match.group(2)) / 100),
                     99,
                 )
             elif match.group(1) == "%-":
                 new_val = min(
-                    threads_settings[unit][val]
-                    - math.ceil(
-                        threads_settings[unit][val] * int(match.group(2)) / 100
-                    ),
+                    current - math.ceil(current * int(match.group(2)) / 100),
                     99,
                 )
             else:
                 new_val = int(match.group(2))
             return new_val
-        return threads_settings[unit][val]
+        return current
 
     @staticmethod
     async def check_mode(ctx, mode: str) -> Optional[int]:
@@ -891,7 +907,7 @@ class Bot2b3(NextcordBot):
             print(DIR_BACKUP)
             backup_data = {
                 "EVENT_ACTION": EVENT_ACTION,
-                "threads_settings": threads_settings,
+                "threads_settings": store.get_all_units_settings(),
                 "sensors_settings": store.get_all_sensors_settings(),
                 "USAGE_LIMIT": USAGE_LIMIT,
             }
@@ -917,14 +933,17 @@ class Bot2b3(NextcordBot):
                 EVENT_ACTION[action] = backup_data["EVENT_ACTION"][action]
             # 2B
             for bck_bt_name in backup_data["threads_settings"]:
-                threads_settings[bck_bt_name]["sync"] = False
-                for field in backup_data["threads_settings"][bck_bt_name]:
-                    if field == "updated":
-                        threads_settings[bck_bt_name][field] = True
-                    else:
-                        threads_settings[bck_bt_name][field] = backup_data[
-                            "threads_settings"
-                        ][bck_bt_name][field]
+                unit = UnitDict(bck_bt_name)
+                bck_unit = backup_data["threads_settings"][bck_bt_name]
+
+                # build dict to restore
+                restored = {
+                    field: True if field == "updated" else value
+                    for field, value in bck_unit.items()
+                }
+                restored["sync"] = False
+
+                store.update_thread_settings(unit, restored)
 
             # restore Sensors
             for sensor_name in backup_data["sensors_settings"].keys():
@@ -976,6 +995,7 @@ class Bot2b3(NextcordBot):
                 max_value=300,
             ),
         ) -> None:
+            # TODO: REF profile fucked up
             name_arg = name_arg.upper() + ".json"
             if action_arg == "save":
                 bck_file = open(DIR_PROFILE / name_arg, "w")
@@ -1365,16 +1385,18 @@ class Bot2b3(NextcordBot):
             if await check_permission(interaction, "administrator"):
                 mode_id = await self.check_mode(interaction, mode_arg)
                 if mode_id:
-                    for unit in await self.check_unit(interaction, unit_arg):
-                        unit = "UNIT" + str(unit)
-                        threads_settings[unit]["updated"] = True
-                        threads_settings[unit]["mode"] = mode_id
-                        if (
-                            MODE_2B[mode_id]["adj_2"] == ""
-                        ):  # reset to adj_1 for modes without adj_2
-                            threads_settings[unit]["adj_2"] = threads_settings[unit][
-                                "adj_1"
-                            ]
+                    for unit_num in await self.check_unit(interaction, unit_arg):
+                        unit = UnitDict(f"UNIT{unit_num}")
+
+                        changes = {"updated": True, "mode": mode_id}
+
+                        # reset adj_2 pour les modes sans adj_2
+                        if MODE_2B[mode_id]["adj_2"] == "":
+                            changes["adj_2"] = store.get_thread_setting(
+                                unit, "adj_1", default=0
+                            )
+
+                        store.update_thread_settings(unit, changes)
                     await interaction.response.send_message(
                         "new mode for unit {} is {}".format(unit_arg, mode_arg)
                     )
@@ -1658,6 +1680,7 @@ class Bot2b3(NextcordBot):
                                 )
                                 threads_settings[unit]["updated"] = True
                                 threads_settings[unit][ch_name] = new_val
+                                pprint(threads_settings[unit])
                 if len(txt) == 0:
                     await interaction.response.send_message(
                         "There are no channel with this usage"
@@ -1831,11 +1854,18 @@ class Bot2b3(NextcordBot):
                     interaction, "administrator"
                 ):
                     self.queueRunning = False
-                    for unit in BT_UNITS:
-                        for ch in ("ch_A", "ch_B"):
-                            threads_settings[unit]["updated"] = True
-                            threads_settings[unit][ch] = 0
-                            threads_settings[unit][ch + "_max"] = 0
+                    for unit_str in BT_UNITS:
+                        unit = UnitDict(unit_str)
+                        store.update_thread_settings(
+                            unit,
+                            {
+                                "updated": True,
+                                "ch_A": 0,
+                                "ch_A_max": 0,
+                                "ch_B": 0,
+                                "ch_B_max": 0,
+                            },
+                        )
                     await interaction.response.send_message("stop all channels")
             return None
 
@@ -1962,15 +1992,13 @@ class Bot2b3(NextcordBot):
         Logger.info(f"Action received! {type_action}")
         # action parsed in the event
 
-        await store.websocket.broadcast(
-            {
-                "type": "event-trigger",
-                "payload": {
-                    "type_action": type_action,
-                    "origin_action": origin_action,
-                    "event_time": event_time,
-                },
-            }
+        ws_notifier.notify(
+            payload_type="events:triggered",
+            payload={
+                "type_action": type_action,
+                "origin_action": origin_action,
+                "event_time": event_time,
+            },
         )
 
         m = re.search("^wof_([A-Z])([A-Z,a-z])([A-Z,a-z])$", type_action)
@@ -2057,29 +2085,33 @@ class Bot2b3(NextcordBot):
             # Multi change
             elif EVENT_ACTION[type_action]["type"] == "multi":
                 Logger.warning("New multiplier event")
-                for unit in BT_UNITS:
-                    for ch in ["A", "B"]:
-                        # find channel with this usage
+                action = EVENT_ACTION[type_action]
+
+                for unit_str in BT_UNITS:
+                    unit = UnitDict(unit_str)
+                    snapshot = store.get_unit_dict(unit)
+                    changes = {}
+
+                    for ch in ("A", "B"):
                         if (
-                            threads_settings[unit][f"ch_{ch}_use"]
-                            == EVENT_ACTION[type_action]["target"].lower()
-                            or EVENT_ACTION[type_action]["target"].lower() == "all"
+                            snapshot[f"ch_{ch}_use"] == action["target"].lower()
+                            or action["target"].lower() == "all"
                         ):
                             ch_name = f"ch_{ch}_multiplier"
-                            add_vall = 0
-                            if EVENT_ACTION[type_action]["rnd"]:
-                                if EVENT_ACTION[type_action]["prct"] > 0:
-                                    add_vall = random.randint(
-                                        0, EVENT_ACTION[type_action]["prct"]
-                                    )
-                                else:
-                                    add_vall = random.randint(
-                                        EVENT_ACTION[type_action]["prct"], 0
-                                    )
+
+                            if action["rnd"]:
+                                add_val = random.randint(
+                                    min(0, action["prct"]),
+                                    max(0, action["prct"]),
+                                )
                             else:
-                                add_vall = EVENT_ACTION[type_action]["prct"]
-                            threads_settings[unit][ch_name] += add_vall
-                            threads_settings[unit]["updated"] = True
+                                add_val = action["prct"]
+
+                            changes[ch_name] = snapshot[ch_name] + add_val
+
+                    if changes:
+                        changes["updated"] = True
+                        store.update_unit_dict(unit, changes)
             # Add max time / Add time
             elif EVENT_ACTION[type_action]["type"] == "add":
                 Logger.warning("New duration event")
@@ -2110,18 +2142,20 @@ class Bot2b3(NextcordBot):
                                 },
                                 headers=CHASTER_HEADERS,
                             ) as update_dur:
-                                logger.debug(update_dur.text())
+                                Logger.debug(update_dur.text())
                             if not EVENT_ACTION[type_action]["only_max"]:
                                 async with session.post(
                                     f"{CHASTER_URL}/locks/{self.chaster_lockid}/update-time",
                                     json={"duration": duration},
                                     headers=CHASTER_HEADERS,
                                 ) as update_dur:
-                                    logger.debug(update_dur.text())
+                                    Logger.debug(update_dur.text())
         else:
             Logger.info("[Actions] New event type {} unknow".format(type_action))
 
     async def reverse_action(self, action: dict) -> None:
+        # TODO: REF everything
+
         """
         Reverse change from a previous action
         Args:
@@ -2132,37 +2166,50 @@ class Bot2b3(NextcordBot):
         """
 
         if action["type"] == "lvl":
-            unit = action["unit"]
+            unit = UnitDict(action["unit"])
             var = action["dest"]
-            new_val = threads_settings[unit][var] + action["level_diff"]
-            new_val = max(0, min(100, new_val))  # to avoid special case (or bug) ...
-            Logger.info(
-                f"return to initial value for unit {unit} var {var} is {new_val}"
-            )
-            threads_settings[unit]["updated"] = True
-            threads_settings[unit][var] = new_val
+            snapshot = store.get_unit_dict(unit)
 
-            Logger.info(f"[Action] Successfully back to initial Levels.")
+            new_val = max(0, min(100, snapshot[var] + action["level_diff"]))
+
+            Logger.info(
+                f"Return to initial value for unit {action['unit']} var {var} is {new_val}"
+            )
+
+            store.update_unit_dict(
+                unit,
+                {
+                    "updated": True,
+                    var: new_val,
+                },
+            )
+
+            Logger.info("[Action] Successfully reversed to initial Levels.")
 
         elif action["type"] == "pro":
-            file_bck = open(DIR_TMP / action["bck_file"], "r")
-            backup_data = json.load(file_bck)
-            bck_settings = backup_data["threads_settings"]
-            file_bck.close()
-            os.remove(DIR_TMP / action["bck_file"])
-            # apply old profile
-            for bck_bt_name in bck_settings:
-                threads_settings[bck_bt_name]["sync"] = False
-                threads_settings[bck_bt_name]["updated"] = True
-                for field in bck_settings[bck_bt_name]:
-                    if field in PROFILE_FIELDS:
-                        threads_settings[bck_bt_name][field] = bck_settings[
-                            bck_bt_name
-                        ][field]
+            with open(DIR_TMP / action["bck_file"], "r") as f:
+                backup_data = json.load(f)
 
-            Logger.info(f"[Action] Successfully back to initial Profile.")
+            bck_settings = backup_data["threads_settings"]
+            os.remove(DIR_TMP / action["bck_file"])
+
+            for bck_bt_name, bck_unit in bck_settings.items():
+                unit = UnitDict(bck_bt_name)
+
+                changes = {
+                    field: value
+                    for field, value in bck_unit.items()
+                    if field in PROFILE_FIELDS
+                }
+
+                if changes:
+                    changes.update({"sync": False, "updated": True})
+                    store.update_unit_dict(unit, changes)
+
+            Logger.info("[Action] Successfully reversed to initial Profile.")
 
     async def apply_action(self, action: dict) -> None:
+        # TODO: REF everything
         """
         Apply action from Event
         Args:
@@ -2171,96 +2218,84 @@ class Bot2b3(NextcordBot):
         Returns: None
 
         """
-        # pprint(action)
-        # pprint(threads_settings)
-        Logger.info("{} action start\n".format(action["origine"]))
+        Logger.info("{} Action start\n".format(action["origine"]))
         # Level update
         if action["type"] == "lvl":
-            for unit in await self.check_unit(None, action["unit"]):
-                unit = "UNIT" + str(unit)
-                # level adjust
+            for unit_num in await self.check_unit(None, action["unit"]):
+                unit_str = f"UNIT{unit_num}"
+                unit = UnitDict(unit_str)
+                snapshot = store.get_unit_dict(unit)
+                changes = {}
+
                 for ch in await self.check_ch(None, action["dest"].upper()):
                     ch_name = f"ch_{ch}_max"
-                    old_val = threads_settings[unit][ch_name]
-                    new_val = self.calc_new_val(action["level"], unit, ch_name)
-                    threads_settings[unit]["updated"] = True
-                    threads_settings[unit][ch_name] = new_val
+                    old_val = snapshot[ch_name]
+                    new_val = self.calc_new_val(action["level"], unit_str, ch_name)
+
+                    changes[ch_name] = new_val
                     self.back_action_queue.append(
                         {
                             "type": action["type"],
-                            "unit": unit,
+                            "unit": unit_str,
                             "dest": ch_name,
                             "level_diff": old_val - new_val,
                             "origine": action["origine"],
                         }
                     )
+
                     Logger.info(
-                        "[Action] level for {} {} -> {}".format(
-                            threads_settings[unit][f"ch_{ch}_use"], old_val, new_val
-                        )
+                        f"[Action] level for {snapshot[f'ch_{ch}_use']} {old_val} -> {new_val}"
                     )
 
-                    await store.websocket.broadcast(
-                        {
-                            "type": "level-update",
-                            "payload": {
-                                "electrode_name": threads_settings[unit][
-                                    f"ch_{ch}_use"
-                                ],
-                                "type": action["type"],
-                                "unit": unit,
-                                "channel": ch_name,
-                                "level_old": old_val,
-                                "level_new": new_val,
-                            },
-                        }
-                    )
-
+                if changes:
+                    changes["updated"] = True
+                    store.update_unit_dict(unit, changes)
         # profile update
         elif action["type"] == "pro":
             if action["profile"] == "X":
                 action["profile"] = random.choice(PROFILE_RANDOM)
+
             filename = action["profile"] + ".json"
-            if not os.path.isfile(DIR_PROFILE / filename):
-                Logger.info("Profile file {} missing".format(DIR_PROFILE / filename))
-            else:
-                # backup current profile
-                file_bck = open(DIR_TMP / action["origine"], "w")
-                backup_data = {"threads_settings": threads_settings}
-                json.dump(backup_data, file_bck, indent=4)
-                file_bck.close()
-                self.back_action_queue.append(
-                    {
-                        "type": action["type"],
-                        "bck_file": action["origine"],
-                        "origine": action["origine"],
-                    }
+            profile_path = DIR_PROFILE / filename
+
+            if not os.path.isfile(profile_path):
+                Logger.info(f"Profile file {profile_path} missing")
+                return
+
+            # backup current profile
+            with open(DIR_TMP / action["origine"], "w") as f:
+                json.dump(
+                    {"threads_settings": store.get_all_units_settings()}, f, indent=4
                 )
-                # load new profile
-                file_profile = open(DIR_PROFILE / filename, "r")
-                backup_data = json.load(file_profile)
-                bck_settings = backup_data["threads_settings"]
-                file_profile.close()
-                # apply new profile
-                for bck_bt_name in bck_settings:
-                    threads_settings[bck_bt_name]["sync"] = False
-                    threads_settings[bck_bt_name]["updated"] = True
-                    threads_settings[bck_bt_name]["ramp_progress"] = 0
-                    for field in bck_settings[bck_bt_name]:
-                        if field in PROFILE_FIELDS:
-                            if field in ["ch_A_max", "ch_B_max"]:
-                                new_val = round(
-                                    int(bck_settings[bck_bt_name][field])
-                                    * int(action["level"])
-                                    / 100
-                                )
-                                threads_settings[bck_bt_name][field] = min(
-                                    100, max(0, new_val)
-                                )
-                            else:
-                                threads_settings[bck_bt_name][field] = bck_settings[
-                                    bck_bt_name
-                                ][field]
+
+            self.back_action_queue.append(
+                {
+                    "type": action["type"],
+                    "bck_file": action["origine"],
+                    "origine": action["origine"],
+                }
+            )
+
+            # load + apply new profile
+            with open(profile_path, "r") as f:
+                profile_data = json.load(f)
+
+            bck_settings = profile_data["threads_settings"]
+
+            for bck_bt_name, bck_unit in bck_settings.items():
+                unit = UnitDict(bck_bt_name)
+                changes = {"sync": False, "updated": True, "ramp_progress": 0}
+
+                for field, value in bck_unit.items():
+                    if field not in PROFILE_FIELDS:
+                        continue
+                    if field in ("ch_A_max", "ch_B_max"):
+                        new_val = round(int(value) * int(action["level"]) / 100)
+                        changes[field] = min(100, max(0, new_val))
+                    else:
+                        changes[field] = value
+
+                store.update_unit_dict(unit, changes)
 
     # BT sensors polling for new alarm
     async def bt_sensor_alarm(self):
@@ -2324,8 +2359,8 @@ class Bot2b3(NextcordBot):
         except asyncio.CancelledError:
             raise
         except Exception:
-            logger.warning(f"Task exception bt_sensor_alarm")
-            logger.debug(traceback.print_exc())
+            Logger.warning(f"Task exception bt_sensor_alarm")
+            Logger.debug(traceback.print_exc())
 
     # Chaster detect active lock et task/pillory pooling
     async def set_chaster(self) -> None:
@@ -2344,7 +2379,7 @@ class Bot2b3(NextcordBot):
                 if len(json_feed) > 0:
                     # get the first active lock
                     if not self.chaster_lockid:
-                        logger.warning(
+                        Logger.warning(
                             "Chaster active lock detected lockid : {}".format(
                                 json_feed[0]["_id"]
                             )
@@ -2360,7 +2395,7 @@ class Bot2b3(NextcordBot):
                             if taskid:
                                 if self.chaster_taskid != taskid:
                                     self.chaster_taskvote = {}  # New poll, reset previous results
-                                    logger.warning(
+                                    Logger.warning(
                                         "Chaster tasks voting detected taskid : {}".format(
                                             taskid
                                         )
@@ -2374,7 +2409,7 @@ class Bot2b3(NextcordBot):
                             pilloryid = json_feed[0]["extensions"][idx]["_id"]
                             if pilloryid:
                                 if self.chaster_pilloryid != pilloryid:
-                                    logger.warning(
+                                    Logger.warning(
                                         "Chaster pillory detected pilloryid : {}".format(
                                             pilloryid
                                         )
@@ -2389,8 +2424,8 @@ class Bot2b3(NextcordBot):
         except asyncio.CancelledError:
             raise
         except Exception:
-            logger.warning(f"Task exception set_chaster")
-            logger.debug(traceback.print_exc())
+            Logger.warning(f"Task exception set_chaster")
+            Logger.debug(traceback.print_exc())
 
     async def chaster_history(self) -> None:
         """
@@ -2417,21 +2452,21 @@ class Bot2b3(NextcordBot):
                         # parse voting
                         if chaster_event["type"] == "link_time_changed":
                             if "duration" not in chaster_event["payload"]:
-                                logger.warning("new chaster vote without duration")
+                                Logger.warning("new chaster vote without duration")
                                 await self.add_event_action(
                                     "vote",
                                     "vote" + chaster_event["_id"],
                                     time.localtime(),
                                 )
                             elif chaster_event["payload"]["duration"] > 0:
-                                logger.warning("new chaster vote add")
+                                Logger.warning("new chaster vote add")
                                 await self.add_event_action(
                                     "vote",
                                     "vote" + chaster_event["_id"],
                                     time.localtime(),
                                 )
                             else:
-                                logger.warning("new chaster vote sub")
+                                Logger.warning("new chaster vote sub")
                                 await self.add_event_action(
                                     "vote_sub",
                                     "vote" + chaster_event["_id"],
@@ -2458,7 +2493,7 @@ class Bot2b3(NextcordBot):
                                     time.localtime(),
                                 )
                             else:
-                                logger.warning(
+                                Logger.warning(
                                     "unknow wheel of fortune test:"
                                     + chaster_event["payload"]["segment"]["text"]
                                 )
@@ -2472,8 +2507,8 @@ class Bot2b3(NextcordBot):
         except asyncio.CancelledError:
             raise
         except Exception:
-            logger.warning(f"Task exception chaster_history")
-            logger.debug(traceback.print_exc())
+            Logger.warning(f"Task exception chaster_history")
+            Logger.debug(traceback.print_exc())
 
     # Chaster parse task pooling
     async def chaster_task(self) -> None:
@@ -2517,7 +2552,7 @@ class Bot2b3(NextcordBot):
                             self.chaster_taskvote[self.chaster_taskid][type_action],
                             nb_votes,
                         ):
-                            logger.warning(f"new chaster vote task {type_action}")
+                            Logger.warning(f"new chaster vote task {type_action}")
                             # add event to queue
                             await self.add_event_action(
                                 type_action,
@@ -2540,8 +2575,8 @@ class Bot2b3(NextcordBot):
         except asyncio.CancelledError:
             raise
         except Exception:
-            logger.warning(f"Task exception chaster_task")
-            logger.debug(traceback.print_exc())
+            Logger.warning(f"Task exception chaster_task")
+            Logger.debug(traceback.print_exc())
 
     # for exception in tasks chaster_pillory
     @tasks.loop(seconds=30)
@@ -2552,7 +2587,7 @@ class Bot2b3(NextcordBot):
             raise
         except Exception:
             Logger.error(f"[Chaster-Threads] Task exception chaster_pillory")
-            logger.debug(traceback.print_exc())
+            Logger.debug(traceback.print_exc())
 
     # Event action queueing
     async def event_queue_mgmt(self):
@@ -2585,7 +2620,7 @@ class Bot2b3(NextcordBot):
                     queue_nb_run = queue_nb_run + 1
             else:
                 # Action Finished
-                logger.warning(
+                Logger.warning(
                     "{} action stop after {} sec".format(
                         self.action_queue[idx]["display"],
                         self.action_queue[idx]["duration"],
@@ -2643,8 +2678,8 @@ class Bot2b3(NextcordBot):
         except asyncio.CancelledError:
             raise
         except Exception:
-            logger.warning(f"Task exception event_queue_mgmt")
-            logger.debug(traceback.print_exc())
+            Logger.warning(f"Task exception event_queue_mgmt")
+            Logger.debug(traceback.print_exc())
 
     # update boot status
     async def update_status(self):
@@ -2676,8 +2711,8 @@ class Bot2b3(NextcordBot):
         except asyncio.CancelledError:
             raise
         except Exception:
-            logger.warning(f"Task exception update_status")
-            logger.debug(traceback.print_exc())
+            Logger.warning(f"Task exception update_status")
+            Logger.debug(traceback.print_exc())
 
     # @Bot is Ready
     async def on_ready(self):
@@ -2708,7 +2743,7 @@ class Bot2b3(NextcordBot):
 
     # cmd arg errors
     async def on_command_error(self, context, exception):
-        logger.error(str(exception))
+        Logger.error(str(exception))
 
 
 def sensor_check_val(sensor_name: str, measure: str, val: int) -> None:
@@ -2845,16 +2880,10 @@ async def sensor_bt(sensor_name: str, address: str, char_uuid: str) -> None:
             sensor_check_val(sensor_name, "move", 0)
             sensor_check_val(sensor_name, "position", 0)
 
-        # get current loop and queue ws update
-        loop = asyncio.get_event_loop()
-        asyncio.run_coroutine_threadsafe(
-            store.websocket.broadcast(
-                {
-                    "type": "sensors:update",
-                    "payload": {"id": sensor_name, "changes": {"sensor_online": False}},
-                }
-            ),
-            loop,
+        # queue ws update
+        ws_notifier.notify(
+            payload_type="sensors:update",
+            payload={"id": sensor_name, "changes": {"sensor_online": False}},
         )
 
         disconnected_event.set()
@@ -2865,16 +2894,10 @@ async def sensor_bt(sensor_name: str, address: str, char_uuid: str) -> None:
         Logger.info(f"[Sensors] {sensor_name} sensor is connected")
         current_sensor_settings["sensor_online"] = True
 
-        # get current loop and queue ws update
-        loop = asyncio.get_event_loop()
-        asyncio.run_coroutine_threadsafe(
-            store.websocket.broadcast(
-                {
-                    "type": "sensors:update",
-                    "payload": {"id": sensor_name, "changes": {"sensor_online": True}},
-                }
-            ),
-            loop,
+        # queue ws update
+        ws_notifier.notify(
+            payload_type="sensors:update",
+            payload={"id": sensor_name, "changes": {"sensor_online": True}},
         )
 
         await client.start_notify(char_uuid, partial(sensor_notification, sensor_name))
@@ -2903,7 +2926,7 @@ def thread_sensors_bt(sensor: str, addr: str, service: str) -> None:
         except BleakDeviceNotFoundError:
             time.sleep(30)
         except Exception as err:
-            logger.info(
+            Logger.info(
                 f"Thread error in start_sensors_bt {sensor}: {err=}, {type(err)=}"
             )
             time.sleep(30)
@@ -2911,6 +2934,7 @@ def thread_sensors_bt(sensor: str, addr: str, service: str) -> None:
 
 # Software ramp
 def thread_update_ramp():
+    # TODO: REF ramp mechanism
     RAMP_STEP = 2
     Logger.info(f"Start software ramp thread")
     while True:
@@ -3012,7 +3036,70 @@ def thread_update_ramp():
 def mk2b_init():
     # Init 2B threads settings
     for init_bt_name in BT_UNITS:
+        # TODO: REF double init
+        store.update_unit_dict(
+            unit_dict=UnitDict(init_bt_name),
+            changes={
+                "id": init_bt_name,
+                # Channel A
+                "ch_A": 0,  # ch_A target level for the 2B
+                "ch_A_max": 0,  # ch_A set max value
+                "ch_A_ramp_phase": 0,  # ramp phase
+                "ch_A_ramp_prct": 100,  # ramp % of max for ch A
+                "ch_A_multiplier": 100,  # percentage of level multiplier
+                # Channel B
+                "ch_B": 0,  # ch_B target level for the 2B
+                "ch_B_max": 0,  # ch_B set max value
+                "ch_B_ramp_phase": 0,  # ramp phase
+                "ch_B_ramp_prct": 100,  # ramp % of max for ch B
+                "ch_B_multiplier": 100,  # percentage of level multiplier
+                # Soft ramp
+                "ramp_time": 120,  # ramp duration
+                "ramp_wave": False,  # ramp decrease after max also reset to min
+                "ramp_progress": 0,  # progress in ramp cycle
+                # Channels usage
+                "ch_A_use": DEFAULT_USAGE[init_bt_name]["A"],  # ch_A usage
+                "ch_B_use": DEFAULT_USAGE[init_bt_name]["B"],  # ch_B usage
+                "ch_A_limit": USAGE_LIMIT.get(DEFAULT_USAGE[init_bt_name]["A"], USAGE_LIMIT["default"]),
+                "ch_B_limit": USAGE_LIMIT.get(DEFAULT_USAGE[init_bt_name]["B"], USAGE_LIMIT["default"]),
+                # waveform setting 1
+                "adj_1": DEFAULT_USAGE_SETTING[init_bt_name][
+                    "adj_1"
+                ],  # 2B adj 1 target setting
+                "adj_1_max": DEFAULT_USAGE_SETTING[init_bt_name][
+                    "adj_1"
+                ],  # 2B adj 1 set max value
+                "adj_1_ramp_phase": 0,  # ramp phase
+                "adj_1_ramp_prct": 100,  # ramp % of max for adj_1
+                # waveform setting 2
+                "adj_2": DEFAULT_USAGE_SETTING[init_bt_name][
+                    "adj_2"
+                ],  # 2B adj 2 target setting
+                "adj_2_max": DEFAULT_USAGE_SETTING[init_bt_name][
+                    "adj_2"
+                ],  # 2B adj 2 set max value
+                "adj_2_ramp_phase": 0,  # ramp phase
+                "adj_2_ramp_prct": 100,  # ramp % of max for adj_2
+                # 2B timer adjusts
+                "adj_3": DEFAULT_USAGE_SETTING[init_bt_name]["adj_3"],  # ramp speed
+                "adj_4": DEFAULT_USAGE_SETTING[init_bt_name]["adj_4"],  # wrap factor
+                # power config
+                "ch_link": False,  # link between ch A and B (not used)
+                "level_d": False,  # Dynamic power mode
+                "level_h": DEFAULT_USAGE_SETTING[init_bt_name]["level_h"],  # L/H c
+                "level_map": 0,  # power map used
+                "power_bias": 0,  # power bias usage
+                # mode
+                "mode": DEFAULT_USAGE_SETTING[init_bt_name]["mode"],  # mode
+                # status
+                "cnx_ok": False,  # 2B connexion status
+                "sync": False,  # 2B settings are synchronized
+                "updated": False,  # values are changed
+            },
+        )
+
         threads_settings[init_bt_name] = {
+            "id": init_bt_name,
             # Channel A
             "ch_A": 0,  # ch_A target level for the 2B
             "ch_A_max": 0,  # ch_A set max value
@@ -3032,6 +3119,8 @@ def mk2b_init():
             # Channels usage
             "ch_A_use": DEFAULT_USAGE[init_bt_name]["A"],  # ch_A usage
             "ch_B_use": DEFAULT_USAGE[init_bt_name]["B"],  # ch_B usage
+            "ch_A_limit": USAGE_LIMIT.get(DEFAULT_USAGE[init_bt_name]["A"], USAGE_LIMIT["default"]),
+            "ch_B_limit": USAGE_LIMIT.get(DEFAULT_USAGE[init_bt_name]["B"], USAGE_LIMIT["default"]),
             # waveform setting 1
             "adj_1": DEFAULT_USAGE_SETTING[init_bt_name][
                 "adj_1"
@@ -3092,22 +3181,17 @@ async def sensors():
 
 @app.get("/units")
 async def units():
-    return threads_settings
-    # return threads_settings
+    return store.get_all_units_settings()
 
 
-@app.get("/update")
-async def upd():
-    # await bot.add_event_action(
-    #     'chaster_pillory_vote',
-    #     'pillory_chaster' + '_' + "lucie",
-    #     time.localtime()
-    # )
-    await store.websocket.broadcast(
-        {"type": "sensor-notification", "payload": ["sensor 1 updated"]}
-    )
-
-    return {"success": "OK"}
+HANDLERS = {
+    "core:stop": (handle_stop, Permission.WRITE_UNITS),
+    "sensors:update": (handle_sensors_update, Permission.WRITE_SENSORS),
+    "units:update_level": (handle_update_level, Permission.WRITE_UNITS),
+    "units:update_mode": (handle_update_mode, Permission.WRITE_UNITS),
+    "units:update_power_mode": (handle_update_power_mode, Permission.WRITE_UNITS),
+    "units:update_adj": (handle_update_adj, Permission.WRITE_UNITS),
+}
 
 
 # WebSocket API
@@ -3118,7 +3202,6 @@ async def websocket_endpoint(websocket: WebSocket, token: str):
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         user_id = payload.get("sub")
-        # role = payload.get("role")
 
         # connect User to WebSocket
         await store.websocket.connect(user_id, websocket)
@@ -3138,6 +3221,10 @@ async def websocket_endpoint(websocket: WebSocket, token: str):
             {"type": "sensors:init", "payload": store.get_all_sensors_settings()}
         )
 
+        await websocket.send_json(
+            {"type": "units:init", "payload": store.get_all_units_settings()}
+        )
+
         # Heartbeat and Message handling
         while True:
             try:
@@ -3152,99 +3239,47 @@ async def websocket_endpoint(websocket: WebSocket, token: str):
                 msg_type = message.get("type")
                 msg_payload = message.get("payload")
 
+                """
+                    Reply to ping for keepalive
+                """
                 if msg_type == "ping":
-                    """
-                        reply to ping for keepalive
-                    """
                     await websocket.send_json({"type": "pong"})
                     continue
-                elif msg_type == "core:stop":
-                    """
-                        Emergency shutdown all units and queue
-                    """
-                    if store.check_permission(user_id, Permission.WRITE_UNITS):
-                        bot.queueRunning = False
-                        for unit in BT_UNITS:
-                            for ch in ("ch_A", "ch_B"):
-                                threads_settings[unit]["updated"] = True
-                                threads_settings[unit][ch] = 0
-                                threads_settings[unit][ch + "_max"] = 0
 
+                # TODO: remove, action queue is in bot atm so..
+                if msg_type == "core:stop":
+                    bot.queueRunning = False
+
+                # fetch command to use
+                handler_tuple = HANDLERS.get(msg_type)
+
+                # has registered command
+                if handler_tuple:
+                    handler_fn, required_permission = handler_tuple
+
+                    # user has permission to execute command
+                    if store.check_permission(user_id, required_permission):
+                        result = await handler_fn(msg_payload, ws_notifier)
+
+                        # answer command ok/error
                         await websocket.send_json(
                             {
-                                "type": "command",
-                                "payload": {"status": "ok"},
                                 "id": msg_id,
+                                "type": "command",
+                                "payload": result,
                             }
                         )
                     else:
                         await websocket.send_json(
                             {
+                                "id": msg_id,
                                 "type": "command",
                                 "payload": {
                                     "status": "error",
-                                    "message": "Missing permission: WRITE_UNITS",
+                                    "message": f"Missing permission: {required_permission.name}",
                                 },
-                                "id": msg_id,
                             }
                         )
-                elif msg_type == "sensors:update":
-                    """
-                        Update one or more Sensors
-                    """
-                    if store.check_permission(user_id, Permission.WRITE_SENSORS):
-                        # loop over sensors then fields
-                        for sensorName, value in msg_payload.items():
-                            store.update_sensor_fields(sensorName, value)
-
-                        # reply with ok
-                        await websocket.send_json(
-                            {
-                                "type": "command",
-                                "payload": {"status": "ok"},
-                                "id": msg_id,
-                            }
-                        )
-                    else:
-                        await websocket.send_json(
-                            {
-                                "type": "command",
-                                "payload": {
-                                    "status": "error",
-                                    "message": "Missing permission: WRITE_SENSORS",
-                                },
-                                "id": msg_id,
-                            }
-                        )
-                # Handle client messages (e.g., commands)
-                elif msg_type == "get:notifications":
-                    print(f"🔔 Get notifications - ID: {msg_id}")
-
-                    # Récupérer les notifications
-                    notifications = [
-                        {"id": 1, "message": "Test notification 1"},
-                        {"id": 2, "message": "Test notification 2"},
-                    ]
-
-                    # IMPORTANT : Renvoyer avec l'ID
-                    response = {
-                        "type": "get:notifications",
-                        "payload": notifications,
-                        "id": msg_id,  # ← CRUCIAL
-                    }
-
-                    print(f"📤 Sending: {json.dumps(response)}")
-                    await websocket.send_json(response)
-                else:
-                    """
-                        Message not supported
-                    """
-                    print(f"⚠️ Unknown message type: {msg_type}")
-                    # if data.get("type") == "command":
-                    #     pprint(data)
-                    #     # command = DeviceCommand(**data.get("data"))
-                    #     # await device_store.websocket.send_command(command)
-
             except asyncio.TimeoutError:
                 print("💓 Sending heartbeat ping")
                 await websocket.send_json({"type": "ping"})
@@ -3268,16 +3303,57 @@ async def websocket_endpoint(websocket: WebSocket, token: str):
             store.websocket.disconnect(user_id)
 
 
-# bot
+# Testings
+def start_mock_units():
+    cached_units: dict = {
+        "UNIT1": {
+            "ch_A": 0,
+            "ch_B": 0,
+        },
+        "UNIT2": {
+            "ch_A": 0,
+            "ch_B": 0,
+        },
+        "UNIT3": {
+            "ch_A": 0,
+            "ch_B": 0,
+        },
+    }
+
+    while True:
+        tick = random.randint(1, 3)
+
+        for unit_id in cached_units.keys():
+            # ch_A = 20 + random.randint(0, 30)
+            # ch_B = 20 + random.randint(0, 30)
+            unit = UnitDict(unit_id)
+            snapshot = store.get_unit_dict(unit)
+            changes = {}
+
+            if (
+                cached_units[unit_id]["ch_A"] != snapshot["ch_A_max"]
+                or cached_units[unit_id]["ch_B"] != snapshot["ch_B_max"]
+            ):
+                cached_units[unit_id]["ch_A"] = snapshot["ch_A_max"]
+                cached_units[unit_id]["ch_B"] = snapshot["ch_B_max"]
+
+                changes["ch_A"] = snapshot["ch_A_max"]
+                changes["ch_B"] = snapshot["ch_B_max"]
+
+                store.update_unit_dict(unit, changes)
+
+                ws_notifier.notify(
+                    payload_type="units:update",
+                    payload={"id": unit_id, "changes": changes},
+                )
+
+        time.sleep(1)
+
 
 if __name__ == "__main__":
     Logger.info("Starting PlunEStim 1.0.0")
 
     threads = {}
-
-    # Profiles Module
-    profile = ProfileModule()
-    profile.loadProfiles()
 
     # init thread for BT sensors
     if ENABLE_BT_SENSORS:
@@ -3288,15 +3364,16 @@ if __name__ == "__main__":
     # init threads for each mk2b unit
     if ENABLE_MK2BT:
         for bt_name in BT_UNITS:
-            threads[bt_name] = Thread(
-                target=thread_bt_unit, args=(bt_name, threads_settings[bt_name])
-            )
+            threads[bt_name] = Thread(target=thread_bt_unit, args=(bt_name,))
 
     # init threads for software ramp
     threads["ramp"] = Thread(target=thread_update_ramp)
 
     # api
     threads["api"] = Thread(target=start_api)
+
+    # testing
+    # threads["testing"] = Thread(target=start_mock_units)
 
     # start all thread
     for tr in threads.keys():

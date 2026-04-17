@@ -1,11 +1,12 @@
 import threading
-import asyncio
 from typing import Dict, Optional, Set
 
 from models.User import User
 
 from api.ws.websocket_manager import WebSocketManager
 from typings import UnitDict, Role, Permission
+from api.ws.websocket_notifier import ws_notifier
+
 
 class Store:
     """
@@ -36,7 +37,7 @@ class Store:
                     UnitDict.UNIT3.value: {},
                 }
                 self._sensors_settings: Dict = {}
-                
+
                 # Initalize Sensors
                 self._init_sensors()
 
@@ -86,7 +87,7 @@ class Store:
 
         self._sensors_settings["motion1"] = motion_config
         self._sensors_settings["motion2"] = motion_config.copy()
-        
+
         self._sensors_settings["motion2"]["id"] = "motion2"
 
         # Sound sensor init
@@ -110,31 +111,58 @@ class Store:
 
     def get_unit_setting(self, unit_dict: UnitDict, key: str, default=None):
         with self._units_lock:
-            dict_name = unit_dict.value
-            if dict_name not in self._units_settings:
-                return default
-            return self._units_settings[dict_name].get(key, default)
+            return self._units_settings.get(unit_dict.value, {}).get(key, default)
 
     def set_unit_setting(self, unit_dict: UnitDict, key: str, value):
         with self._units_lock:
-            dict_name = unit_dict.value
-            if dict_name not in self._units_settings:
-                raise KeyError(f"Dictionary '{dict_name}' doesn't exist")
-            self._units_settings[dict_name][key] = value
+            unit_id = unit_dict.value
+            if unit_id not in self._units_settings:
+                raise KeyError(f"Unit '{unit_id}' doesn't exist")
+                
+            unit_state = self._units_settings[unit_id]
+            
+            if key == "ch_A" or key == "ch_A_max":
+                limit_a = unit_state.get("ch_A_limit", {}).get("max", 100)
+                if int(value) > limit_a:
+                    value = limit_a
+            elif key == "ch_B" or key == "ch_B_max":
+                limit_b = unit_state.get("ch_B_limit", {}).get("max", 100)
+                if int(value) > limit_b:
+                    value = limit_b
+                    
+            unit_state[key] = value
+
+    def update_unit_dict(self, unit_dict: UnitDict, changes: Dict):
+        with self._units_lock:
+            unit_id = unit_dict.value
+            if unit_id not in self._units_settings:
+                raise KeyError(f"Unit '{unit_id}' doesn't exist")
+                
+            unit_state = self._units_settings[unit_id]
+            
+            if "ch_A" in changes:
+                limit_a = unit_state.get("ch_A_limit", {}).get("max", 100)
+                if int(changes["ch_A"]) > limit_a:
+                    changes["ch_A"] = limit_a
+            if "ch_A_max" in changes:
+                limit_a = unit_state.get("ch_A_limit", {}).get("max", 100)
+                if int(changes["ch_A_max"]) > limit_a:
+                    changes["ch_A_max"] = limit_a
+                    
+            if "ch_B" in changes:
+                limit_b = unit_state.get("ch_B_limit", {}).get("max", 100)
+                if int(changes["ch_B"]) > limit_b:
+                    changes["ch_B"] = limit_b
+            if "ch_B_max" in changes:
+                limit_b = unit_state.get("ch_B_limit", {}).get("max", 100)
+                if int(changes["ch_B_max"]) > limit_b:
+                    changes["ch_B_max"] = limit_b
+                    
+            unit_state.update(changes)
 
     def get_unit_dict(self, unit_dict: UnitDict) -> Dict:
         with self._units_lock:
-            dict_name = unit_dict.value
-            if dict_name not in self._units_settings:
-                return {}
-            return self._units_settings[dict_name].copy()
-
-    def update_unit_dict(self, unit_dict: UnitDict, settings: Dict):
-        with self._units_lock:
-            dict_name = unit_dict.value
-            if dict_name not in self._units_settings:
-                raise KeyError(f"Dictionary '{dict_name}' doesn't exist")
-            self._units_settings[dict_name].update(settings)
+            return self._units_settings.get(unit_dict.value, {}).copy()
 
     def get_all_units_settings(self) -> Dict[str, Dict]:
         with self._units_lock:
@@ -142,6 +170,19 @@ class Store:
                 name: dict_content.copy()
                 for name, dict_content in self._units_settings.items()
             }
+
+    def consume_unit_update(self, unit_dict: UnitDict) -> Optional[Dict]:
+        """
+        if unit updated=True,reset updated flag and return copied unit data
+        else return None
+        """
+        with self._units_lock:
+            unit_id = unit_dict.value
+            unit = self._units_settings.get(unit_id)
+            if unit and unit.get("updated"):
+                unit["updated"] = False
+                return unit.copy()
+            return None
 
     def clear_unit_dict(self, unit_dict: UnitDict):
         with self._units_lock:
@@ -165,52 +206,38 @@ class Store:
     def set_sensor_setting(self, key: str, value):
         with self._sensors_lock:
             self._sensors_settings[key] = value
-        
+
         # broadcast change
         self._broadcast_sensor_update(key, value)
-            
+
     def update_sensor_fields(self, sensor_name: str, fields: Dict):
         with self._sensors_lock:
             if sensor_name not in self._sensors_settings:
                 raise KeyError(f"Sensor '{sensor_name}' doesn't exist")
             self._sensors_settings[sensor_name].update(fields)
-        
+
         # broadcast only updated fields
         self._broadcast_sensor_update(sensor_name, fields, partial=True)
-    
+
     def update_sensor_field(self, sensor_name: str, field_name: str, value):
         with self._sensors_lock:
             if sensor_name not in self._sensors_settings:
-                raise KeyError(f"Sensor '{sensor_name}'  doesn't exist")
+                raise KeyError(f"Sensor '{sensor_name}' doesn't exist")
             self._sensors_settings[sensor_name][field_name] = value
-        
+
         # broadcast only updated field
         self._broadcast_sensor_update(sensor_name, {field_name: value}, partial=True)
-    
-    def _broadcast_sensor_update(self, sensor_id: str, data: Dict, partial: bool = False):
+
+    def _broadcast_sensor_update(
+        self, sensor_id: str, data: Dict, partial: bool = False
+    ):
         """
-            Broadcast to WebSocket clients sensor updates
+        Broadcast to WebSocket clients sensor updates
         """
         try:
-            try:
-                loop = asyncio.get_running_loop()
-            except RuntimeError:
-                loop = asyncio.get_event_loop()
-                if loop.is_closed():
-                    return
-            
-            message = {
-                "type": "sensors:update",
-                "payload": {
-                    "id": sensor_id,
-                    "partial": partial,
-                    "changes": data
-                }
-            }
-            
-            asyncio.run_coroutine_threadsafe(
-                self._websocket.broadcast(message),
-                loop
+            ws_notifier.notify(
+                payload_type="sensors:update",
+                payload={"id": sensor_id, "partial": partial, "changes": data},
             )
         except Exception as e:
             print(f"[WebSocket] Error when broadcast sensor update: {e}")

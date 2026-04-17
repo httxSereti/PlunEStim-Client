@@ -1,4 +1,5 @@
-import type { Sensor } from "./sensor.types";
+import type { UnitSettings } from "@/types/units.types";
+import type { Sensor } from "@/types/sensor.types";
 
 export type WebSocketStatus = 'connecting' | 'connected' | 'disconnected' | 'error';
 
@@ -89,6 +90,26 @@ export interface SensorsUpdateMessage {
     };
 }
 
+export interface UnitsInitialMessage {
+    id?: string;
+    type: 'units:init';
+    payload?: never;
+}
+
+export interface UnitsUpdateMessage {
+    id?: string;
+    type: 'units:update';
+    payload: {
+        id: string;
+        changes: Partial<UnitSettings>;
+    };
+}
+
+export interface CoreStopMessage {
+    status: string;
+    message: string;
+}
+
 export type WebSocketIncomingMessage =
     | ChatMessage
     | UserConnected
@@ -98,7 +119,11 @@ export type WebSocketIncomingMessage =
     | PingMessage
     | PongMessage
     | SensorsInitialMessage
-    | SensorsUpdateMessage;
+    | SensorsUpdateMessage
+    | UnitsInitialMessage
+    | UnitsUpdateMessage
+    | CoreStopMessage
+    ;
 
 export interface WebSocketConfig {
     url: string;
@@ -115,8 +140,4 @@ export interface WebSocketState {
     error: string | null;
     reconnectAttempts: number;
     lastConnected: number | null;
-}
-
-export interface WebSocketCommandResponse {
-    status: string;
 }

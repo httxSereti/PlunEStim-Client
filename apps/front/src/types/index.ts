@@ -6,8 +6,8 @@ export type {
     WebSocketIncomingMessage,
     WebSocketConfig,
     WebSocketState,
-    WebSocketCommandResponse,
     // Message types
+    CoreStopMessage,
     ChatMessage,
     UserConnected,
     UserDisconnected,
@@ -41,3 +41,8 @@ export type {
     SoundSensor,
     SensorsState,
 } from './sensor.types';
+
+export type {
+    UnitsState,
+    UnitSettings,
+} from './units.types';

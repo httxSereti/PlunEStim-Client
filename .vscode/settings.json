@@ -2,5 +2,10 @@
     "editor.formatOnSave": true,
     "files.associations": {
         "*.css": "tailwindcss"
+    },
+    "files.watcherExclude": {
+        "**/.git/objects/**": true,
+        "**/node_modules/**": true,
+        "**/venv/**": true
     }
 }
